@@ -1079,12 +1079,12 @@ async function genGuide(plan, destOverride){
 }
 /* ============ AI 接口（OpenAI 兼容）============ */
 const AI_PRESETS = {
-  deepseek:    {name:"DeepSeek",        base:"https://api.deepseek.com/v1",                          model:"deepseek-chat"},
-  zhipu:       {name:"智谱 GLM",         base:"https://open.bigmodel.cn/api/paas/v4",                 model:"glm-4-flash"},
-  siliconflow: {name:"硅基流动 SiliconFlow", base:"https://api.siliconflow.cn/v1",                     model:"Qwen/Qwen2.5-7B-Instruct"},
-  moonshot:    {name:"Moonshot  Kimi",   base:"https://api.moonshot.cn/v1",                           model:"moonshot-v1-8k"},
-  dashscope:   {name:"通义千问",         base:"https://dashscope.aliyuncs.com/compatible-mode/v1",     model:"qwen-plus"},
-  custom:      {name:"自定义",           base:"",                                                     model:""}
+  deepseek:    {name:"DeepSeek",        base:"https://api.deepseek.com/v1",                          model:"deepseek-chat", keyUrl:"https://platform.deepseek.com/api_keys", note:"注册需实名；按量付费，充 10 元能用很久。中文好、最推荐。"},
+  zhipu:       {name:"智谱 GLM",         base:"https://open.bigmodel.cn/api/paas/v4",                 model:"glm-4-flash",  keyUrl:"https://open.bigmodel.cn/usercenter/apikeys", note:"glm-4-flash 有免费额度，可以先白嫖试。"},
+  siliconflow: {name:"硅基流动 SiliconFlow", base:"https://api.siliconflow.cn/v1",                     model:"Qwen/Qwen2.5-7B-Instruct", keyUrl:"https://cloud.siliconflow.cn/account/ak", note:"新用户送额度，部分小模型免费。"},
+  moonshot:    {name:"Moonshot  Kimi",   base:"https://api.moonshot.cn/v1",                           model:"moonshot-v1-8k", keyUrl:"https://platform.moonshot.cn/console/api-keys", note:"注册送一点体验额度。"},
+  dashscope:   {name:"通义千问",         base:"https://dashscope.aliyuncs.com/compatible-mode/v1",     model:"qwen-plus",    keyUrl:"https://bailian.console.aliyun.com/?apiKey=1", note:"阿里云百炼，需实名；新用户有免费额度。"},
+  custom:      {name:"自定义",           base:"",                                                     model:"",             keyUrl:"", note:"自填接口地址与模型，适合 Ollama 等本地服务。"}
 };
 async function aiConfigGet(){
   return await getMeta("aiConfig", {enabled:false, preset:"deepseek", base:"", key:"", model:""});
@@ -1128,12 +1128,21 @@ async function openSettings(){
     <select id="ai_preset">${Object.entries(AI_PRESETS).map(([k,v])=>`<option value="${k}" ${pk===k?"selected":""}>${v.name}</option>`).join("")}</select>
     <label>接口地址 Base URL</label><input id="ai_base" value="${esc(base)}" placeholder="https://api.deepseek.com/v1">
     <label>API Key</label><input id="ai_key" type="password" value="${esc(cfg.key||"")}" placeholder="sk-..." autocomplete="off">
+    <p class="meta" id="ai_keyhint" style="margin:6px 0 0"></p>
     <label>模型</label><input id="ai_model" value="${esc(model)}" placeholder="deepseek-chat">
     <p class="meta" style="margin-top:10px">⚠️ Key 只保存在本机浏览器（IndexedDB），不会上传到别处。若该接口未开放跨域(CORS)，浏览器会调用失败——换支持跨域的服务商，或关掉开关用本地生成。</p>
     <div id="ai_test" class="meta" style="margin-top:6px"></div>
   `, `<div class="modal-actions"><button class="ghost" data-act="closeModal">取消</button><button class="sm" data-act="testAI">测试连接</button><button class="primary" data-act="saveAI">保存</button></div>`);
   const sel = $("#ai_preset");
-  sel.onchange = ()=>{ const p = AI_PRESETS[sel.value]; if(p && p.base){ $("#ai_base").value = p.base; $("#ai_model").value = p.model; } };
+  const renderKeyHint = (pk)=>{
+    const p = AI_PRESETS[pk] || AI_PRESETS.deepseek;
+    const el = $("#ai_keyhint"); if(!el) return;
+    el.innerHTML = `Key 要去官网申请（注册后才有一串 sk- 开头的码，只显示一次，复制粘贴到上面）。`
+      + (p.keyUrl ? ` <a href="${p.keyUrl}" target="_blank" rel="noopener" style="color:var(--brand);font-weight:600">🔑 去 ${esc(p.name)} 申请 →</a>` : "")
+      + (p.note ? `<br>💡 ${esc(p.note)}` : "");
+  };
+  sel.onchange = ()=>{ const p = AI_PRESETS[sel.value]; if(p && p.base){ $("#ai_base").value = p.base; $("#ai_model").value = p.model; } renderKeyHint(sel.value); };
+  renderKeyHint(pk);
 }
 async function saveAI(){
   const cfg = { enabled:$("#ai_on").checked, preset:$("#ai_preset").value, base:$("#ai_base").value.trim(), key:$("#ai_key").value.trim(), model:$("#ai_model").value.trim() };
