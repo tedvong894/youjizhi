@@ -1104,6 +1104,10 @@ async function callAI(messages, cfg, opts){
 function aiErrHint(e){
   const msg = (e && e.message) || String(e);
   if(/Failed to fetch|NetworkError|Load failed|TypeError/i.test(msg)) return "网络或跨域(CORS)被拦截，换一个支持跨域的接口";
+  if(/402|Insufficient Balance/i.test(msg)) return "账户余额不足 —— 去 Key 所属服务商官网充值后重试（Key 和配置都没问题）";
+  if(/401|403|invalid.*key|Unauthorized|auth/i.test(msg)) return "Key 无效或未生效 —— 检查是否复制完整、是否已创建成功";
+  if(/429|rate.?limit/i.test(msg)) return "请求太频繁，等几秒再试";
+  if(/404|model.*not.*found|not_found/i.test(msg)) return "模型名不对 —— 检查模型框拼写，或恢复默认预设";
   return msg.slice(0,140);
 }
 function parseJSONLoose(s){
