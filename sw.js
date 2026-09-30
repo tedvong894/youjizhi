@@ -1,5 +1,5 @@
 /* 游记志 service worker：离线缓存单文件 App */
-const CACHE = 'travel-app-v2';
+const CACHE = 'travel-app-v3';
 const ASSETS = [
   './',
   './index.html',
