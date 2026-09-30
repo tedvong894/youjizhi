@@ -2723,7 +2723,7 @@ function render(){
 /* ============ 模块1：游玩记录 ============ */
 function renderRecords(){
   const sub = state.sub;
-  const subs = [["plan","旅游计划"],["guide","打卡攻略"],["done","已完成"],["explore","探索/推送"]];
+  const subs = [["plan","旅游计划"],["guide","打卡攻略"],["done","已完成"],["explore","探索"]];
   const tabs = subs.map(([k,t])=>`<button class="${sub===k?'active':''}" data-act="sub" data-k="${k}">${t}</button>`).join("");
   let body = "";
   if(sub==="plan") body = planList("plan");
@@ -2831,13 +2831,6 @@ function exploreView(){
     </div>
     <div class="actions" style="margin-top:10px"><button class="sm primary" data-act="smartRec">生成推荐</button></div>
     <div id="recRes" style="margin-top:6px"></div>
-  </div>
-  <div class="card">
-    <h3>🔔 推送中心</h3>
-    <div class="switch"><span>当季目的地推荐</span><input type="checkbox" id="tSeason" style="width:auto" ${""}></div>
-    <div class="switch"><span>出行前 3 天提醒</span><input type="checkbox" id="tTrip" style="width:auto"></div>
-    <div class="actions"><button class="sm primary" data-act="checkPush">立即检查推送</button></div>
-    <div id="pushList" style="margin-top:10px"></div>
   </div>`;
 }
 
@@ -2887,21 +2880,6 @@ async function fillExplore(){
   if(cBox) cBox.innerHTML = prefCrowd.map(t=>`<span class="chip" data-v="${t}">${t}</span>`).join("");
   // 偏好 chip 点击切换（频道 chip 交给事件委托）
   $$('[data-pref] .chip').forEach(c=> c.onclick = ()=> c.classList.toggle("on"));
-  // 推送开关
-  const s = await getMeta("pushSeasonal", true); const t = await getMeta("pushPretrip", true);
-  $("#tSeason").checked = !!s; $("#tTrip").checked = !!t;
-  $("#tSeason").onchange = ()=> setMeta("pushSeasonal", $("#tSeason").checked);
-  $("#tTrip").onchange = ()=> setMeta("pushPretrip", $("#tTrip").checked);
-  renderPushList(await getMeta("pushItems", []));
-}
-function renderPushList(items){
-  const el = $("#pushList"); if(!el) return;
-  if(!items || !items.length){ el.innerHTML = `<div class="meta">暂无推送，点“立即检查推送”试试</div>`; return; }
-  el.innerHTML = items.map(it=>`
-    <div class="scene"><span class="no">${it.icon||"🔔"}</span> <b>${esc(it.title)}</b>
-      <div class="meta">${esc(it.desc||"")}</div>
-      ${it.dests?`<div style="margin-top:4px">${it.dests.map(d=>`<span class="tag">${esc(d.name)}</span>`).join("")}</div>`:""}
-    </div>`).join("");
 }
 const LIST_LIMIT = { n:30, box:null, list:null, note:"" };
 function renderDestList(box, list, note, keep){
@@ -3561,7 +3539,6 @@ function handleAct(act, el){
     case "smartRec": smartRec(); break;
     case "clearSearch": $("#searchKw").value=""; ["fProv","fType","fSeason","fStyle"].forEach(i=>{const e=$("#"+i); if(e) e.value="";});
       ["searchRes","extForKw","channelRes","recRes"].forEach(i=>{const e=$("#"+i); if(e) e.innerHTML="";}); break;
-    case "checkPush": checkPush(true); break;
     case "closeModal": closeModal(); break;
     case "savePlan": savePlan(id); break;
     case "saveGuide": saveGuide(id, el.dataset.plan||null); break;
@@ -3779,11 +3756,10 @@ async function checkPush(force){
     const key="r-"+r.id; if(force||!fired.includes(key)){ items.push({type:"remind",icon:"📍",title:`${r.name} 进入最佳季节`,desc:"计划出发吧，可加入旅游计划"}); if(!fired.includes(key))fired.push(key);} });
   await setMeta(firedKey, fired);
   await setMeta("pushItems", items);
-  renderPushList(items);
   if(items.length && "Notification" in window && Notification.permission==="granted"){
     items.slice(0,3).forEach(it=>{ try{ new Notification(it.title,{body:it.desc}); }catch(e){} });
   }
-  toast(items.length?`推送 ${items.length} 条`:"暂无新推送");
+  if(force) toast(items.length?`已更新 ${items.length} 条提醒`:"暂无新提醒");
 }
 
 /* ============ 备份 / 恢复 ============ */
@@ -3825,7 +3801,7 @@ async function boot(){
   await seedIfNeeded();
   bindGlobal();
   render();
-  // 启动时顺带检查推送（不强制弹通知，仅更新推送中心）
+  // 启动时静默检查（有权限就弹系统通知，不打扰界面）
   checkPush(false);
   // 注册 Service Worker（需 http(s) 环境）
   if("serviceWorker" in navigator && location.protocol.startsWith("http")){
