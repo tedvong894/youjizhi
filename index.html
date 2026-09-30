@@ -81,6 +81,11 @@
     position:fixed; bottom:0; left:0; right:0; z-index:20;
     display:flex; background:var(--panel); border-top:1px solid var(--line);
     padding:6px 0 calc(6px + env(safe-area-inset-bottom));
+    /* iOS：强制独立合成图层，修复 fixed 元素滚动/键盘后跑位 */
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    will-change: transform;
+    backface-visibility: hidden;
   }
   .tabbar button{
     flex:1; border:none; background:transparent; color:var(--muted);
@@ -3457,30 +3462,6 @@ async function runGenGuide(){
   const g = await aiOrLocalGuide(p);
   closeModal(); guideForm(g);
 }
-function fillGuideFormFields(g){
-  const setRows=(boxId, kind, tips)=>{
-    const box = document.getElementById(boxId); if(!box) return;
-    const list = (tips&&tips.length) ? tips : [{angle:"",content:""}];
-    box.innerHTML = list.map((t,i)=>`
-      <div class="row tiprow" data-kind="${kind}" data-i="${i}">
-        <input class="t-angle" placeholder="角度" value="${esc(t.angle||"")}">
-        <input class="t-content" placeholder="内容建议" value="${esc(t.content||"")}">
-        <button class="sm danger" type="button" onclick="this.parentNode.remove()">×</button>
-      </div>`).join("");
-  };
-  setRows("gPhoto","photo", g.photoTips);
-  setRows("gVideo","video", g.videoTips);
-  const set = (id, arr)=>{ const e = $("#"+id); if(e) e.value = (arr||[]).join("\n"); };
-  set("gSpots", g.spots); set("gTips", g.tips); set("gChecklist", g.checklist); set("gCaptions", g.captions);
-  const t = $("#g_title"); if(t && !t.value) t.value = g.title;
-}
-async function aiFillGuide(){
-  const name = ($("#g_dest").value||"").trim();
-  if(!name){ toast("先填关联目的地"); return; }
-  const g = await aiOrLocalGuide(null, name);
-  fillGuideFormFields(g);
-}
-
 function guideForm(rec){
   rec = rec || {kind:"guide", destination:"", title:"", photoTips:[{angle:"",content:""}], videoTips:[{angle:"",content:""}], spots:[], tips:[], checklist:[], captions:[]};
   const tipRows = (tips, kind)=> (tips&&tips.length?tips:[{angle:"",content:""}]).map((t,i)=>`
@@ -3493,7 +3474,6 @@ function guideForm(rec){
   openModal(rec.id?"编辑攻略":"新建打卡攻略", `
     <label>关联目的地</label><input id="g_dest" value="${esc(rec.destination)}" placeholder="如：桂林漓江">
     <label>攻略标题（可选）</label><input id="g_title" value="${esc(rec.title)}" placeholder="如：漓江最佳机位">
-    <div class="actions" style="margin-top:10px"><button class="sm primary" type="button" data-act="aiFillGuide">✨ 按目的地智能生成建议</button></div>
     ${rec.sourcePlanTitle?`<p class="meta" style="margin-top:8px">🔗 本攻略基于计划「${esc(rec.sourcePlanTitle)}」生成，可继续编辑</p>`:""}
     <p style="color:var(--brand);font-weight:600;margin:14px 0 4px">📸 拍照角度与内容建议</p>
     <div id="gPhoto">${tipRows(rec.photoTips,"photo")}</div>
@@ -3587,7 +3567,6 @@ function handleAct(act, el){
     case "saveGuide": saveGuide(id, el.dataset.plan||null); break;
     case "genGuideFromPlan": genGuideFromPlan(); break;
     case "runGenGuide": runGenGuide(); break;
-    case "aiFillGuide": aiFillGuide(); break;
     case "testAI": testAI(); break;
     case "saveAI": saveAI(); break;
     case "moreNotify": closeModal(); enableNotify(); break;
@@ -3620,6 +3599,31 @@ function bindGlobal(){
   });
   $("#btnMore").onclick = openMore;
   $("#importFile").onchange = importData;
+  initTabbarGuard();
+}
+/* iOS 修复：底部 Tab 偶发跑位（滚动/键盘收起后 fixed 元素错位）——检测到偏离视口底部就强制归位 */
+function initTabbarGuard(){
+  const bar = document.querySelector(".tabbar");
+  if(!bar) return;
+  let busy = false;
+  const snap = ()=>{
+    if(busy) return; busy = true;
+    requestAnimationFrame(()=>{
+      const r = bar.getBoundingClientRect();
+      const off = Math.abs(r.bottom - window.innerHeight);
+      if(off > 1){
+        bar.style.display = "none";
+        requestAnimationFrame(()=>{ bar.style.display = ""; });
+      }
+      busy = false;
+    });
+  };
+  window.addEventListener("focusout", ()=> setTimeout(snap, 80));
+  window.addEventListener("resize", ()=> setTimeout(snap, 80));
+  window.addEventListener("orientationchange", ()=> setTimeout(snap, 120));
+  if(window.visualViewport) window.visualViewport.addEventListener("resize", ()=> setTimeout(snap, 80));
+  document.addEventListener("visibilitychange", ()=>{ if(!document.hidden) setTimeout(snap, 120); });
+  document.addEventListener("scrollend", snap, {passive:true});
 }
 function openMore(){
   openModal("更多", `
