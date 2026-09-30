@@ -24,12 +24,14 @@
   /* 顶栏 */
   .topbar{
     position:sticky; top:0; z-index:20; background:var(--bg);
-    display:flex; align-items:center; justify-content:space-between;
-    padding:12px 16px; border-bottom:1px solid var(--line);
+    display:flex; align-items:center; justify-content:space-between; gap:8px;
+    padding:11px 14px; border-bottom:1px solid var(--line);
   }
-  .brand{font-size:18px; font-weight:600; letter-spacing:.5px}
+  .brand{font-size:17px; font-weight:600; letter-spacing:.5px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0}
   .brand small{color:var(--muted); font-weight:400; font-size:12px; margin-left:6px}
-  .topactions{display:flex; gap:8px}
+  .topactions{display:flex; gap:6px; flex-shrink:0}
+  .topactions button{padding:6px 9px}
+  @media (max-width:440px){ .brand small{display:none} .topbar{padding:10px} .topactions button{padding:6px 7px; font-size:12px} }
   /* 通用控件 */
   button{
     font:inherit; cursor:pointer; border:1px solid var(--line); background:var(--panel);
@@ -135,7 +137,7 @@
   <div class="brand">🧭 游记志<small>个人旅游记录</small></div>
   <div class="topactions">
     <button class="sm ghost" id="btnNotify">🔔 提醒</button>
-    <button class="sm ghost" id="btnSettings">⚙️ AI</button>
+    <button class="sm ghost" id="btnSettings">⚙️ 设置</button>
     <button class="sm ghost" id="btnExport">备份</button>
     <button class="sm ghost" id="btnImport">恢复</button>
   </div>
@@ -495,7 +497,7 @@ function renderRecords(){
   else if(sub==="explore") body = exploreView();
   return `<div class="subtabs">${tabs}</div>
     <div class="actions" style="margin-bottom:12px">
-      ${sub==="guide" ? `<button class="primary sm" data-act="newGuide">+ 新建攻略</button><button class="sm" data-act="genGuideFromPlan">✨ 从计划生成</button>` : ""}
+      ${sub==="guide" ? `<button class="primary sm" data-act="newGuide">+ 新建攻略</button><button class="sm" data-act="genGuideFromPlan">✨ 从计划生成</button><button class="sm ghost" data-act="openSettings">⚙️ AI 设置</button>` : ""}
       ${sub==="plan" ? `<button class="primary sm" data-act="newPlan">+ 新建计划</button>` : ""}
       ${sub==="explore" ? `<button class="primary sm" data-act="newDest">+ 新增目的地</button>` : ""}
     </div>${body}`;
@@ -1338,6 +1340,7 @@ function handleAct(act, el){
     case "aiFillGuide": aiFillGuide(); break;
     case "testAI": testAI(); break;
     case "saveAI": saveAI(); break;
+    case "openSettings": openSettings(); break;
     case "planToGuide": dbGet("records",id).then(async p=>{ const g = await aiOrLocalGuide(p); guideForm(g); }); break;
     case "guideToLog": dbGet("records",id).then(g=>logForm({title:(g.destination||"")+" 日志", date:fmtDate(new Date()), location:g.destination||"", text:""}, false, g.planId||null)); break;
     case "saveDest": saveDest(); break;
@@ -1560,6 +1563,13 @@ async function boot(){
   // 注册 Service Worker（需 http(s) 环境）
   if("serviceWorker" in navigator && location.protocol.startsWith("http")){
     navigator.serviceWorker.register("sw.js").catch(()=>{});
+    // 已有旧外壳时，新版本接管后自动刷新一次，用户无需手动强刷
+    if(navigator.serviceWorker.controller){
+      let refreshed = false;
+      navigator.serviceWorker.addEventListener("controllerchange", ()=>{
+        if(refreshed) return; refreshed = true; location.reload();
+      });
+    }
   }
 }
 boot();
