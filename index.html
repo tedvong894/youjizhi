@@ -130,16 +130,19 @@
   .ext:hover{border-color:var(--brand)}
   summary{list-style:none}
   summary::-webkit-details-marker{display:none}
+  .moremenu{display:flex; flex-direction:column; gap:2px; margin:4px 0 2px}
+  .moreitem{display:flex; align-items:center; gap:10px; padding:13px 10px; border:none; background:none;
+    font-size:15px; color:var(--text); text-align:left; border-bottom:1px solid var(--line); cursor:pointer}
+  .moreitem:last-child{border-bottom:none}
+  .moreitem:active{background:var(--bg)}
+  .moreitem .no{font-size:17px}
 </style>
 </head>
 <body>
 <header class="topbar">
   <div class="brand">🧭 游记志<small>个人旅游记录</small></div>
   <div class="topactions">
-    <button class="sm ghost" id="btnNotify">🔔 提醒</button>
-    <button class="sm ghost" id="btnSettings">⚙️ 设置</button>
-    <button class="sm ghost" id="btnExport">备份</button>
-    <button class="sm ghost" id="btnImport">恢复</button>
+    <button class="sm ghost" id="btnMore" title="提醒 / 设置 / 备份 / 恢复">⋯</button>
   </div>
 </header>
 
@@ -1353,6 +1356,10 @@ function handleAct(act, el){
     case "aiFillGuide": aiFillGuide(); break;
     case "testAI": testAI(); break;
     case "saveAI": saveAI(); break;
+    case "moreNotify": closeModal(); enableNotify(); break;
+    case "moreSettings": closeModal(); openSettings(); break;
+    case "moreExport": closeModal(); exportData(); break;
+    case "moreImport": closeModal(); $("#importFile").click(); break;
     case "openSettings": openSettings(); break;
     case "planToGuide": dbGet("records",id).then(async p=>{ const g = await aiOrLocalGuide(p); guideForm(g); }); break;
     case "guideToLog": dbGet("records",id).then(g=>logForm({title:(g.destination||"")+" 日志", date:fmtDate(new Date()), location:g.destination||"", text:""}, false, g.planId||null)); break;
@@ -1376,11 +1383,18 @@ function bindGlobal(){
     if(!el) return;
     handleAct(el.dataset.act, el);
   });
-  $("#btnNotify").onclick = enableNotify;
-  $("#btnSettings").onclick = openSettings;
-  $("#btnExport").onclick = exportData;
-  $("#btnImport").onclick = ()=> $("#importFile").click();
+  $("#btnMore").onclick = openMore;
   $("#importFile").onchange = importData;
+}
+function openMore(){
+  openModal("更多", `
+    <div class="moremenu">
+      <button class="moreitem" data-act="moreNotify"><span class="no">🔔</span> 提醒与推送</button>
+      <button class="moreitem" data-act="moreSettings"><span class="no">⚙️</span> 设置 · AI 接口</button>
+      <button class="moreitem" data-act="moreExport"><span class="no">💾</span> 备份数据</button>
+      <button class="moreitem" data-act="moreImport"><span class="no">📤</span> 恢复数据</button>
+    </div>
+  `, ``);
 }
 function setTab(t){ state.tab=t; state.logId = (t!=="logs")?state.logId:state.logId;
   $$(".tabbar button").forEach(b=>b.classList.toggle("active", b.dataset.tab===t));
