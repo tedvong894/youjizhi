@@ -2732,7 +2732,7 @@ function renderRecords(){
   else if(sub==="explore") body = exploreView();
   return `<div class="subtabs">${tabs}</div>
     <div class="actions" style="margin-bottom:12px">
-      ${sub==="guide" ? `<button class="primary sm" data-act="newGuide">+ 新建攻略</button><button class="sm" data-act="genGuideFromPlan">✨ 从计划生成</button><button class="sm ghost" data-act="openSettings">⚙️ AI 设置</button>` : ""}
+      ${sub==="guide" ? `<button class="primary sm" data-act="newGuide">+ 新建攻略</button><button class="sm" data-act="genGuideFromPlan">✨ 从计划生成</button>` : ""}
       ${sub==="plan" ? `<button class="primary sm" data-act="newPlan">+ 新建计划</button>` : ""}
       ${sub==="explore" ? `<button class="primary sm" data-act="newDest">+ 新增目的地</button>` : ""}
     </div>${body}`;
@@ -2777,7 +2777,7 @@ async function fillGuideList(){
   wrap.innerHTML = list.map(g=>`
     <div class="card">
       <h3>📍 ${esc(g.destination||g.title)}</h3>
-      <div class="meta">${g.sourcePlanTitle?`🔗 来自计划：${esc(g.sourcePlanTitle)}`:""}${(g.sourcePlanTitle && g.title)?" · ":""}${g.title&&g.title!==g.destination?esc(g.title):""}${g.aiGenerated?" · 🤖 AI 生成":""}</div>
+      <div class="meta">${g.sourcePlanTitle?`🔗 来自计划：${esc(g.sourcePlanTitle)}`:""}${(g.sourcePlanTitle && g.title)?" · ":""}${g.title&&g.title!==g.destination?esc(g.title):""}</div>
       <p style="font-size:14px;margin:8px 0 4px;color:var(--brand);font-weight:600">📸 拍照建议</p>
       <ul style="margin:0;padding-left:18px;font-size:14px">${(g.photoTips||[]).map(t=>`<li><b>${esc(t.angle)}</b> — ${esc(t.content)}</li>`).join("")||"<li class='meta'>暂无</li>"}</ul>
       <p style="font-size:14px;margin:10px 0 4px;color:var(--amber);font-weight:600">🎥 拍视频建议</p>
@@ -3207,7 +3207,7 @@ function planForm(rec){
     <label>备注</label><textarea id="f_notes" placeholder="想去的景点、预算、同行人…">${esc(rec.notes||"")}</textarea>
   `, `<div class="modal-actions"><button class="ghost" data-act="closeModal">取消</button><button class="primary" data-act="savePlan" data-id="${rec.id||""}">保存</button></div>`);
 }
-/* ============ 「AI」攻略生成引擎（本地规则式，离线可用）============ */
+/* ============ 攻略生成引擎（本地规则式，离线可用）============ */
 function seasonOf(m){ return [3,4,5].includes(m)?"春":[6,7,8].includes(m)?"夏":[9,10,11].includes(m)?"秋":"冬"; }
 async function genGuide(plan, destOverride){
   const name = (destOverride || (plan&&plan.destination) || "").trim();
@@ -3297,133 +3297,6 @@ async function genGuide(plan, destOverride){
     updatedAt: Date.now()
   };
 }
-/* ============ AI 接口（OpenAI 兼容）============ */
-const AI_PRESETS = {
-  deepseek:    {name:"DeepSeek",        base:"https://api.deepseek.com/v1",                          model:"deepseek-chat", keyUrl:"https://platform.deepseek.com/api_keys", note:"注册需实名；按量付费，充 10 元能用很久。中文好、最推荐。"},
-  zhipu:       {name:"智谱 GLM",         base:"https://open.bigmodel.cn/api/paas/v4",                 model:"glm-4-flash",  keyUrl:"https://open.bigmodel.cn/usercenter/apikeys", note:"glm-4-flash 有免费额度，可以先白嫖试。"},
-  siliconflow: {name:"硅基流动 SiliconFlow", base:"https://api.siliconflow.cn/v1",                     model:"Qwen/Qwen2.5-7B-Instruct", keyUrl:"https://cloud.siliconflow.cn/account/ak", note:"新用户送额度，部分小模型免费。"},
-  moonshot:    {name:"Moonshot  Kimi",   base:"https://api.moonshot.cn/v1",                           model:"moonshot-v1-8k", keyUrl:"https://platform.moonshot.cn/console/api-keys", note:"注册送一点体验额度。"},
-  dashscope:   {name:"通义千问",         base:"https://dashscope.aliyuncs.com/compatible-mode/v1",     model:"qwen-plus",    keyUrl:"https://bailian.console.aliyun.com/?apiKey=1", note:"阿里云百炼，需实名；新用户有免费额度。"},
-  custom:      {name:"自定义",           base:"",                                                     model:"",             keyUrl:"", note:"自填接口地址与模型，适合 Ollama 等本地服务。"}
-};
-async function aiConfigGet(){
-  return await getMeta("aiConfig", {enabled:false, preset:"deepseek", base:"", key:"", model:""});
-}
-async function callAI(messages, cfg, opts){
-  const url = cfg.base.replace(/\/+$/,"") + "/chat/completions";
-  const body = Object.assign({ model:cfg.model, messages, temperature:0.7 }, opts||{});
-  const res = await fetch(url, {
-    method:"POST",
-    headers:{ "Content-Type":"application/json", "Authorization":"Bearer "+cfg.key },
-    body: JSON.stringify(body)
-  });
-  if(!res.ok){ const t = await res.text().catch(()=>""); throw new Error("HTTP "+res.status+" "+t.slice(0,140)); }
-  const data = await res.json();
-  return (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) || "";
-}
-function aiErrHint(e){
-  const msg = (e && e.message) || String(e);
-  if(/Failed to fetch|NetworkError|Load failed|TypeError/i.test(msg)) return "网络或跨域(CORS)被拦截，换一个支持跨域的接口";
-  if(/402|Insufficient Balance/i.test(msg)) return "账户余额不足 —— 去 Key 所属服务商官网充值后重试（Key 和配置都没问题）";
-  if(/401|403|invalid.*key|Unauthorized|auth/i.test(msg)) return "Key 无效或未生效 —— 检查是否复制完整、是否已创建成功";
-  if(/429|rate.?limit/i.test(msg)) return "请求太频繁，等几秒再试";
-  if(/404|model.*not.*found|not_found/i.test(msg)) return "模型名不对 —— 检查模型框拼写，或恢复默认预设";
-  return msg.slice(0,140);
-}
-function parseJSONLoose(s){
-  if(!s) return null;
-  const t = String(s).replace(/```json/gi,"").replace(/```/g,"").trim();
-  try{ return JSON.parse(t); }catch(e){}
-  const m = t.match(/\{[\s\S]*\}/);
-  if(m){ try{ return JSON.parse(m[0]); }catch(e){} }
-  return null;
-}
-const normTips = (x)=> Array.isArray(x) ? x.map(it=> typeof it==="string" ? {angle:"建议", content:it} : {angle:String(it.angle||"建议"), content:String(it.content||"")}).filter(t=>t.content) : [];
-const normArr = (x)=> Array.isArray(x) ? x.map(v=>String(v)).filter(Boolean) : [];
-
-async function openSettings(){
-  const cfg = await aiConfigGet();
-  const pk = cfg.preset || "deepseek";
-  const pd = AI_PRESETS[pk] || AI_PRESETS.deepseek;
-  const base = cfg.base || pd.base, model = cfg.model || pd.model;
-  openModal("⚙️ 设置 · AI 接口", `
-    <div class="switch"><span>启用 AI 生成攻略（关闭则用本地生成）</span><input type="checkbox" id="ai_on" style="width:auto" ${cfg.enabled?"checked":""}></div>
-    <label>服务商预设</label>
-    <select id="ai_preset">${Object.entries(AI_PRESETS).map(([k,v])=>`<option value="${k}" ${pk===k?"selected":""}>${v.name}</option>`).join("")}</select>
-    <label>接口地址 Base URL</label><input id="ai_base" value="${esc(base)}" placeholder="https://api.deepseek.com/v1">
-    <label>API Key</label><input id="ai_key" type="password" value="${esc(cfg.key||"")}" placeholder="sk-..." autocomplete="off">
-    <p class="meta" id="ai_keyhint" style="margin:6px 0 0"></p>
-    <label>模型</label><input id="ai_model" value="${esc(model)}" placeholder="deepseek-chat">
-    <p class="meta" style="margin-top:10px">⚠️ Key 只保存在本机浏览器（IndexedDB），不会上传到别处。若该接口未开放跨域(CORS)，浏览器会调用失败——换支持跨域的服务商，或关掉开关用本地生成。</p>
-    <div id="ai_test" class="meta" style="margin-top:6px"></div>
-  `, `<div class="modal-actions"><button class="ghost" data-act="closeModal">取消</button><button class="sm" data-act="testAI">测试连接</button><button class="primary" data-act="saveAI">保存</button></div>`);
-  const sel = $("#ai_preset");
-  const renderKeyHint = (pk)=>{
-    const p = AI_PRESETS[pk] || AI_PRESETS.deepseek;
-    const el = $("#ai_keyhint"); if(!el) return;
-    el.innerHTML = `Key 要去官网申请（注册后才有一串 sk- 开头的码，只显示一次，复制粘贴到上面）。`
-      + (p.keyUrl ? ` <a href="${p.keyUrl}" target="_blank" rel="noopener" style="color:var(--brand);font-weight:600">🔑 去 ${esc(p.name)} 申请 →</a>` : "")
-      + (p.note ? `<br>💡 ${esc(p.note)}` : "");
-  };
-  sel.onchange = ()=>{ const p = AI_PRESETS[sel.value]; if(p && p.base){ $("#ai_base").value = p.base; $("#ai_model").value = p.model; } renderKeyHint(sel.value); };
-  renderKeyHint(pk);
-}
-async function saveAI(){
-  const cfg = { enabled:$("#ai_on").checked, preset:$("#ai_preset").value, base:$("#ai_base").value.trim(), key:$("#ai_key").value.trim(), model:$("#ai_model").value.trim() };
-  await setMeta("aiConfig", cfg);
-  closeModal();
-  toast(cfg.enabled ? (cfg.base&&cfg.key&&cfg.model ? "AI 已启用" : "已开开关，但地址/Key/模型未填全") : "AI 已关闭（用本地生成）");
-}
-async function testAI(){
-  const cfg = { base:$("#ai_base").value.trim(), key:$("#ai_key").value.trim(), model:$("#ai_model").value.trim() };
-  const box = $("#ai_test"); box.textContent = "测试中…";
-  if(!cfg.base||!cfg.key||!cfg.model){ box.textContent = "❌ 请填全 地址 / Key / 模型"; return; }
-  try{
-    const c = await callAI([{role:"user",content:"ping"}], cfg, {max_tokens:5});
-    box.textContent = "✅ 连接成功" + (c ? "（返回：" + String(c).trim().slice(0,20) + "）" : "");
-  }catch(e){ box.textContent = "❌ 失败：" + aiErrHint(e); }
-}
-
-/* AI 优先生成，失败回退本地规则引擎 */
-async function aiGenerateGuide(plan, local){
-  const cfg = await aiConfigGet();
-  const days = (plan&&plan.startDate&&plan.endDate) ? Math.max(1, Math.round((new Date(plan.endDate)-new Date(plan.startDate))/86400000)+1) : 0;
-  const planDesc = plan
-    ? `行程标题：${plan.title||""}\n目的地：${plan.destination||local.destination}\n日期：${plan.startDate||"未定"} ~ ${plan.endDate||"未定"}（约 ${days} 天）\n标签：${(plan.tags||[]).join("、")||"无"}\n备注：${plan.notes||"无"}`
-    : `目的地：${local.destination}`;
-  const sys = "你是资深旅行摄影与短视频策划。根据用户的行程，输出针对性强、可执行的打卡攻略。只输出 JSON，不要任何解释或代码块标记。";
-  const schema = '{"title":"攻略标题","photoTips":[{"angle":"机位/角度","content":"具体怎么拍"}],"videoTips":[{"angle":"拍摄方式","content":"怎么拍视频"}],"spots":["打卡点1","打卡点2"],"tips":["行前/实战贴士"],"checklist":["装备1","装备2"],"captions":["可直接用的文案/字幕"]}';
-  const user = `${planDesc}\n\n请生成：拍照建议 4-6 条、拍视频建议 3-4 条、打卡点清单 4-6 个、行前贴士 3-5 条、装备清单 5-8 条、文案模板 4 条。中文，具体可执行，结合当地特色、季节与出行人群。严格按此 JSON 结构输出：\n${schema}`;
-  const content = await callAI([{role:"system",content:sys},{role:"user",content:user}], cfg, {response_format:{type:"json_object"}});
-  const obj = parseJSONLoose(content);
-  if(!obj) throw new Error("无法解析 AI 返回内容");
-  return {
-    kind:"guide", planId: plan?plan.id:null,
-    destination: local.destination,
-    title: obj.title || local.title,
-    photoTips: normTips(obj.photoTips).length ? normTips(obj.photoTips) : local.photoTips,
-    videoTips: normTips(obj.videoTips).length ? normTips(obj.videoTips) : local.videoTips,
-    spots: normArr(obj.spots), tips: normArr(obj.tips), checklist: normArr(obj.checklist), captions: normArr(obj.captions),
-    sourcePlanTitle: plan ? plan.title : "",
-    aiGenerated: true, updatedAt: Date.now()
-  };
-}
-async function aiOrLocalGuide(plan, destOverride){
-  const local = await genGuide(plan, destOverride);
-  const cfg = await aiConfigGet();
-  if(!cfg.enabled || !cfg.base || !cfg.key || !cfg.model) return local;
-  toast("🤖 AI 生成中…");
-  try{
-    const g = await aiGenerateGuide(plan, local);
-    toast("AI 生成完成");
-    return g;
-  }catch(e){
-    console.warn("[AI] failed:", e);
-    toast("AI 调用失败，已用本地生成（" + aiErrHint(e) + "）");
-    return local;
-  }
-}
-
 async function genGuideFromPlan(){
   const plans = (await dbAll("records")).filter(r=>r.kind==="plan")
     .sort((a,b)=> (b.startDate||"").localeCompare(a.startDate||""));
@@ -3437,7 +3310,7 @@ async function genGuideFromPlan(){
 async function runGenGuide(){
   const id = $("#gp_plan").value;
   const p = await dbGet("records", id);
-  const g = await aiOrLocalGuide(p);
+  const g = await genGuide(p);
   closeModal(); guideForm(g);
 }
 function guideForm(rec){
@@ -3544,15 +3417,11 @@ function handleAct(act, el){
     case "saveGuide": saveGuide(id, el.dataset.plan||null); break;
     case "genGuideFromPlan": genGuideFromPlan(); break;
     case "runGenGuide": runGenGuide(); break;
-    case "testAI": testAI(); break;
-    case "saveAI": saveAI(); break;
     case "moreNotify": closeModal(); enableNotify(); break;
-    case "moreSettings": closeModal(); openSettings(); break;
     case "moreExport": closeModal(); exportData(); break;
     case "moreImport": closeModal(); $("#importFile").click(); break;
     case "destMore": LIST_LIMIT.n += 30; renderDestList(LIST_LIMIT.box, LIST_LIMIT.list, LIST_LIMIT.note, true); break;
-    case "openSettings": openSettings(); break;
-    case "planToGuide": dbGet("records",id).then(async p=>{ const g = await aiOrLocalGuide(p); guideForm(g); }); break;
+    case "planToGuide": dbGet("records",id).then(async p=>{ const g = await genGuide(p); guideForm(g); }); break;
     case "guideToLog": dbGet("records",id).then(g=>logForm({title:(g.destination||"")+" 日志", date:fmtDate(new Date()), location:g.destination||"", text:""}, false, g.planId||null)); break;
     case "saveDest": saveDest(); break;
     case "saveLog": saveLog(id, el.dataset.edit==="1", el.dataset.plan||null); break;
@@ -3606,7 +3475,6 @@ function openMore(){
   openModal("更多", `
     <div class="moremenu">
       <button class="moreitem" data-act="moreNotify"><span class="no">🔔</span> 提醒与推送</button>
-      <button class="moreitem" data-act="moreSettings"><span class="no">⚙️</span> 设置 · AI 接口</button>
       <button class="moreitem" data-act="moreExport"><span class="no">💾</span> 备份数据</button>
       <button class="moreitem" data-act="moreImport"><span class="no">📤</span> 恢复数据</button>
     </div>
