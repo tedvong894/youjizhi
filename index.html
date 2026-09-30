@@ -116,6 +116,18 @@
   .seg{display:flex; gap:6px; flex-wrap:wrap; margin:6px 0}
   .seg button{padding:5px 10px; font-size:13px}
   .seg button.on{background:var(--brand); color:#fff; border-color:var(--brand)}
+  /* 频道 / 偏好 胶囊 */
+  .chips{display:flex; flex-wrap:wrap; gap:6px; margin-top:6px}
+  .chip{font-size:13px; border:1px solid var(--line); background:var(--panel);
+    border-radius:20px; padding:5px 11px; cursor:pointer; user-select:none; transition:.15s}
+  .chip:hover{border-color:var(--brand)}
+  .chip.on{background:var(--brand); color:#fff; border-color:var(--brand)}
+  /* 站外搜索渠道 */
+  .ext{display:inline-block; font-size:12px; color:var(--brand); border:1px solid var(--line);
+    background:var(--panel); border-radius:20px; padding:3px 10px; margin:3px 5px 0 0; text-decoration:none}
+  .ext:hover{border-color:var(--brand)}
+  summary{list-style:none}
+  summary::-webkit-details-marker{display:none}
 </style>
 </head>
 <body>
@@ -247,14 +259,215 @@ const SEED_DEST = [
   {name:"雨崩村",province:"云南",type:"自然",playStyle:"探险",best:[4,5,6,9,10,11],tags:["徒步","雪山","原始"],desc:"梅里雪山脚下的原始村落，徒步进村，神瀑与冰湖秘境。",
     photo:["雪山俯瞰村舍","经幡与神瀑"],video:["徒步第一视角","日照金山延时"]}
 ];
+
+/* ============ 扩充目的地库 v2（覆盖 34 个省级行政区，约 110 个）============ */
+const SEED_VERSION = 2;
+// 紧凑格式：[名称, 省份, 类型, 玩法, [最佳月份], 简介, 标签]
+const SEED_MORE = [
+  ["故宫","北京","人文","历史",[3,4,10,11],"明清皇宫，红墙金瓦，角楼与雪景绝美","古建,历史,亲子"],
+  ["八达岭长城","北京","人文","历史",[4,5,9,10],"不到长城非好汉，秋日红叶漫山","古建,历史,徒步"],
+  ["颐和园","北京","人文","休闲",[4,5,9,10],"皇家园林，昆明湖泛舟，十七孔桥","园林,亲子,休闲"],
+  ["南锣鼓巷","北京","城市","美食",[3,4,9,10],"胡同烟火气与小吃，夜游有味道","胡同,美食,夜景"],
+  ["天津之眼","天津","城市","休闲",[4,5,9,10],"跨河摩天轮，夜色最佳","摩天轮,夜景,情侣"],
+  ["五大道","天津","人文","历史",[4,5,9,10],"万国建筑林立，适合漫游骑行","洋楼,历史,骑行"],
+  ["承德避暑山庄","河北","人文","历史",[6,7,8,9],"清帝夏宫，山水园林清凉","园林,历史,避暑"],
+  ["北戴河","河北","海岛","休闲",[6,7,8,9],"海滨避暑，观鸟胜地，日出鸽窝","海滨,避暑,亲子"],
+  ["白石山","河北","自然","摄影",[5,6,9,10],"悬空玻璃栈道与峰林云海","奇峰,玻璃栈道,摄影"],
+  ["云冈石窟","山西","人文","历史",[4,5,9,10],"北魏石窟造像，气势恢宏","石窟,历史,古建"],
+  ["五台山","山西","自然","探险",[6,7,8,9],"清凉圣境，寺庙群与高山草甸","佛教,避暑,徒步"],
+  ["壶口瀑布","山西","自然","摄影",[4,5,9,10],"黄河怒吼，水雾彩虹震撼","瀑布,黄河,摄影"],
+  ["额济纳胡杨林","内蒙古","自然","摄影",[9,10],"金黄胡杨配沙漠戈壁，限时秋色","秋色,胡杨,沙漠,小众"],
+  ["阿尔山","内蒙古","自然","休闲",[6,7,8,9],"火山温泉与森林，清凉小城","森林,温泉,避暑"],
+  ["响沙湾","内蒙古","沙漠","探险",[5,6,9,10],"会唱歌的沙丘，滑沙骑骆驼","沙漠,亲子,探险"],
+  ["大连滨海路","辽宁","城市","休闲",[5,6,9,10],"山海相间的海岸公路，适合自驾","海岸,自驾,休闲"],
+  ["沈阳故宫","辽宁","人文","历史",[4,5,9,10],"清初皇宫，比北京故宫清净","古建,历史,亲子"],
+  ["本溪水洞","辽宁","自然","休闲",[5,6,9,10],"洞中泛舟，钟乳石奇幻","溶洞,亲子,休闲"],
+  ["长白山","吉林","雪山","探险",[6,7,8,9,12,1],"天池火山湖，冬季雪景与温泉","雪山,天池,温泉,徒步"],
+  ["雾凇岛","吉林","自然","摄影",[12,1,2],"冬季雾凇银装，江畔玉树琼花","雾凇,雪景,摄影,小众"],
+  ["哈尔滨冰雪大世界","黑龙江","城市","休闲",[12,1,2],"巨型冰雕灯城，冬夜童话","冰雪,夜景,亲子"],
+  ["中国雪乡","黑龙江","自然","摄影",[12,1,2],"雪蘑菇木屋，红灯笼雪夜","雪景,夜景,摄影"],
+  ["漠河北极村","黑龙江","自然","探险",[6,7,12,1],"中国最北，看极光与星空","星空,极北,小众"],
+  ["上海迪士尼","上海","城市","亲子",[3,4,5,9,10],"童话乐园，烟花秀必看","乐园,亲子,烟花"],
+  ["武康路","上海","城市","休闲",[3,4,5,9,10,11],"梧桐洋房 citywalk，咖啡与老洋楼","citywalk,咖啡,情侣"],
+  ["苏州园林","江苏","人文","历史",[4,5,9,10],"拙政园留园，一步一景","园林,古建,历史"],
+  ["周庄","江苏","古镇","休闲",[3,4,5,9,10],"中国第一水乡，双桥与摇橹船","古镇,水乡,情侣"],
+  ["南京夫子庙","江苏","人文","历史",[3,4,9,10],"秦淮河灯影，夜游画舫","古街,夜景,美食"],
+  ["扬州瘦西湖","江苏","自然","休闲",[4,5,9,10],"烟花三月下扬州，五亭桥","园林,休闲,亲子"],
+  ["乌镇","浙江","古镇","休闲",[3,4,5,9,10,11],"枕水人家，夜色灯光秀","古镇,水乡,夜景"],
+  ["普陀山","浙江","人文","休闲",[4,5,9,10],"海天佛国，南海观音","海岛,佛教,亲子"],
+  ["雁荡山","浙江","自然","摄影",[4,5,9,10],"奇峰飞瀑，灵峰夜景","奇峰,瀑布,摄影"],
+  ["楠溪江","浙江","自然","休闲",[4,5,9,10],"江水清澈，古村田园慢生活","江水,古村,小众"],
+  ["宏村","安徽","古镇","摄影",[3,4,10,11],"画里乡村，月沼倒影与南湖","古镇,徽派,摄影"],
+  ["九华山","安徽","人文","探险",[4,5,9,10],"地藏道场，云海寺庙","佛教,云海,徒步"],
+  ["天堂寨","安徽","自然","探险",[5,6,9,10],"华东原始森林，瀑布成群","森林,瀑布,徒步"],
+  ["武夷山","福建","自然","休闲",[4,5,9,10],"九曲溪竹筏，丹霞岩茶","竹筏,丹霞,茶"],
+  ["平潭岛","福建","海岛","休闲",[5,6,7,9,10],"蓝眼泪与石头厝，环岛路出片","海岛,蓝眼泪,小众"],
+  ["福建土楼","福建","人文","历史",[3,4,9,10],"客家圆楼，大鱼海棠取景","土楼,历史,亲子"],
+  ["泉州古城","福建","人文","美食",[3,4,10,11],"半城烟火半城仙，古早味小吃","古城,美食,世遗"],
+  ["庐山","江西","自然","休闲",[5,6,7,9,10],"云中山城，飞流瀑布","避暑,瀑布,云雾"],
+  ["三清山","江西","自然","摄影",[4,5,9,10],"花岗岩峰林，云雾石柱","奇峰,云海,摄影"],
+  ["景德镇","江西","人文","休闲",[4,5,9,10],"千年瓷都，陶溪川夜市","陶瓷,文创,小众"],
+  ["泰山","山东","自然","探险",[4,5,9,10],"五岳之首，日出云海","登山,日出,历史"],
+  ["曲阜三孔","山东","人文","历史",[4,5,9,10],"孔庙孔府孔林，儒家圣地","古建,历史,亲子"],
+  ["蓬莱阁","山东","人文","历史",[5,6,9,10],"人间仙境，海市蜃楼传说","古建,海滨,历史"],
+  ["龙门石窟","河南","人文","历史",[4,5,9,10],"伊河两岸十万造像，卢舍那大佛","石窟,历史,古建"],
+  ["少林寺","河南","人文","历史",[4,5,9,10],"天下第一名刹，嵩山塔林","古寺,历史,功夫"],
+  ["老君山","河南","自然","摄影",[5,6,9,10,12],"金顶道观云海，冬季雪景绝美","云海,道观,摄影"],
+  ["云台山","河南","自然","休闲",[5,6,9,10],"红石峡碧水，瀑布成群","峡谷,瀑布,亲子"],
+  ["神农架","湖北","自然","探险",[5,6,9,10],"原始森林与高山湿地","森林,避暑,小众"],
+  ["恩施大峡谷","湖北","自然","探险",[4,5,9,10],"绝壁栈道与一线天","峡谷,栈道,徒步"],
+  ["武汉东湖","湖北","城市","休闲",[3,4,9,10],"城市绿心，樱花与绿道骑行","湖泊,骑行,樱花"],
+  ["武当山","湖北","人文","历史",[4,5,9,10],"道教名山，金顶古建群","道教,古建,登山"],
+  ["南岳衡山","湖南","自然","探险",[4,5,9,10],"寿岳云海，祝融峰日出","登山,云海,日出"],
+  ["郴州东江湖","湖南","湖泊","摄影",[4,5,6,9,10],"雾漫小东江，渔夫撒网","晨雾,湖泊,摄影"],
+  ["广州塔","广东","城市","休闲",[3,4,10,11],"小蛮腰夜景，珠江夜游","夜景,地标,情侣"],
+  ["丹霞山","广东","自然","摄影",[3,4,9,10],"丹霞地貌命名地，阳元石","丹霞,奇石,摄影"],
+  ["珠海长隆","广东","城市","亲子",[3,4,5,9,10],"海洋王国，鲸鲨与企鹅","乐园,亲子,海洋"],
+  ["潮州古城","广东","人文","美食",[3,4,10,11],"牌坊街广济桥，潮汕美食之都","古城,美食,世遗"],
+  ["惠州双月湾","广东","海岛","休闲",[5,6,9,10],"两湾并立，观景台看海","海滨,观景台,亲子"],
+  ["龙脊梯田","广西","自然","摄影",[5,6,9,10],"层叠梯田镜面，金坑大寨","梯田,民族,摄影"],
+  ["德天瀑布","广西","自然","探险",[4,5,9,10],"跨国瀑布，归春河界碑","瀑布,边境,小众"],
+  ["涠洲岛","广西","海岛","休闲",[4,5,9,10],"火山海岛，鳄鱼山与五彩滩","海岛,火山,骑行"],
+  ["蜈支洲岛","海南","海岛","休闲",[11,12,1,2,3],"潜水天堂，水清沙白","海岛,潜水,情侣"],
+  ["海口骑楼老街","海南","人文","美食",[11,12,1,2,3],"南洋骑楼，海南小吃聚集","老街,美食,南洋"],
+  ["武隆天生三桥","重庆","自然","摄影",[4,5,9,10],"天坑地缝，电影取景地","天坑,峡谷,摄影"],
+  ["洪崖洞","重庆","城市","摄影",[3,4,10,11],"千与千寻夜色，吊脚楼灯海","夜景,吊脚楼,地标"],
+  ["九寨沟","四川","自然","摄影",[9,10,11],"五花海五彩池，童话世界","彩林,海子,摄影"],
+  ["峨眉山","四川","自然","探险",[4,5,9,10],"金顶佛光云海，灵猴","登山,佛光,云海"],
+  ["乐山大佛","四川","人文","历史",[4,5,9,10],"山是一尊佛，三江汇流","石刻,历史,亲子"],
+  ["四姑娘山","四川","雪山","探险",[6,7,9,10],"蜀山之后，双桥沟雪山","雪山,徒步,高原"],
+  ["牛背山","四川","自然","摄影",[4,5,10,11],"云海佛光，360 度观景平台","云海,星空,摄影"],
+  ["黄果树瀑布","贵州","自然","摄影",[4,5,9,10],"亚洲第一瀑布，水帘洞","瀑布,亲子,摄影"],
+  ["荔波小七孔","贵州","自然","休闲",[4,5,9,10],"翡翠碧水，七孔古桥","碧水,古桥,避暑"],
+  ["西江千户苗寨","贵州","人文","摄影",[4,5,9,10],"千户吊脚楼，万家灯火","苗寨,夜景,民族"],
+  ["梵净山","贵州","自然","探险",[4,5,9,10],"红云金顶，蘑菇石云雾","奇石,云海,徒步"],
+  ["香格里拉","云南","自然","探险",[5,6,9,10],"普达措与松赞林寺，高原秘境","高原,寺庙,草原"],
+  ["元阳梯田","云南","自然","摄影",[1,2,12,3],"哈尼梯田灌水期，光影如镜","梯田,光影,摄影"],
+  ["西双版纳","云南","自然","休闲",[11,12,1,2,3,4],"热带雨林，泼水节与孔雀","雨林,亲子,民族"],
+  ["腾冲","云南","温泉","休闲",[3,4,11,12],"火山热海银杏村，边陲小城","温泉,银杏,古镇"],
+  ["普者黑","云南","湖泊","休闲",[6,7,8],"万亩荷花，喀斯特山水","荷花,湖泊,亲子"],
+  ["纳木错","西藏","湖泊","摄影",[6,7,8,9],"天湖圣湖，念青唐古拉雪山倒映","高原湖,雪山,摄影"],
+  ["林芝","西藏","自然","摄影",[3,4,10],"雪域江南，桃花与雅鲁藏布","桃花,峡谷,小众"],
+  ["珠峰大本营","西藏","雪山","探险",[4,5,9,10],"仰望世界之巅，星空震撼","雪山,星空,高原"],
+  ["羊卓雍错","西藏","湖泊","摄影",[6,7,8,9],"高原蓝宝石，蜿蜒湖湾","高原湖,蓝,摄影"],
+  ["秦始皇兵马俑","陕西","人文","历史",[4,5,9,10],"世界第八大奇迹","历史,考古,亲子"],
+  ["华山","陕西","自然","探险",[4,5,9,10],"奇险天下第一山，长空栈道","奇险,登山,栈道"],
+  ["太白山","陕西","自然","探险",[6,7,8,9],"秦岭主峰，高山湖泊大爷海","避暑,徒步,高原"],
+  ["莫高窟","甘肃","人文","历史",[5,6,9,10],"千年壁画彩塑，丝路瑰宝","石窟,历史,世遗"],
+  ["鸣沙山月牙泉","甘肃","沙漠","摄影",[5,6,9,10],"沙山环抱月牙泉，驼队日落","沙漠,驼队,日落"],
+  ["张掖丹霞","甘肃","自然","摄影",[6,7,8,9],"七彩丘陵，大地调色板","丹霞,七彩,摄影"],
+  ["嘉峪关","甘肃","人文","历史",[5,6,9,10],"天下第一雄关，长城尽头","长城,历史,边塞"],
+  ["青海湖","青海","湖泊","摄影",[6,7,8],"中国最大内陆湖，油菜花环湖","湖泊,油菜花,骑行"],
+  ["塔尔寺","青海","人文","历史",[6,7,8],"藏传佛教圣地，酥油花艺术","藏传,寺庙,历史"],
+  ["大柴旦翡翠湖","青海","湖泊","摄影",[7,8,9],"盐湖翡翠色块，天空之镜","盐湖,翡翠,小众"],
+  ["沙坡头","宁夏","沙漠","探险",[5,6,9,10],"黄河与沙漠相拥，滑沙飞索","沙漠,黄河,亲子"],
+  ["镇北堡西部影城","宁夏","人文","摄影",[5,6,9,10],"大话西游取景地，苍凉西部","影城,苍凉,摄影"],
+  ["贺兰山岩画","宁夏","人文","历史",[5,6,9,10],"远古岩画，贺兰山雄浑","岩画,历史,小众"],
+  ["禾木村","新疆","自然","摄影",[9,10,12,1],"图瓦人木屋，晨雾炊烟与金黄白桦","村庄,秋色,摄影"],
+  ["赛里木湖","新疆","湖泊","摄影",[6,7,8],"大西洋最后一滴眼泪，湛蓝如海","湖泊,雪山,骑行"],
+  ["那拉提草原","新疆","草原","休闲",[6,7,8,9],"空中草原，牛羊与雪山","草原,骑马,亲子"],
+  ["喀什古城","新疆","人文","美食",[5,6,9,10],"百年老城，异域风情与烤包子","古城,美食,民族"],
+  ["天山天池","新疆","湖泊","休闲",[6,7,8,9],"博格达峰下的高山湖泊","湖泊,雪山,休闲"],
+  ["太平山顶","香港","城市","摄影",[10,11,12,1,2,3],"俯瞰维港天际线，夜景必看","夜景,天际线,地标"],
+  ["维多利亚港","香港","城市","摄影",[10,11,12,1,2,3],"幻彩咏香江，天星小轮","夜景,海港,情侣"],
+  ["大三巴牌坊","澳门","人文","历史",[10,11,12,1,2,3],"圣保禄教堂遗址，澳门地标","世遗,历史,古建"],
+  ["路氹金光大道","澳门","城市","休闲",[10,11,12,1,2,3],"运河购物与璀璨酒店群","citywalk,夜景,休闲"],
+  ["日月潭","台湾","湖泊","休闲",[3,4,10,11],"湖光山色，环湖骑行","湖泊,骑行,亲子"],
+  ["阿里山","台湾","自然","摄影",[3,4,10,11],"云海日出，森林小火车","云海,小火车,摄影"],
+  ["垦丁","台湾","海岛","休闲",[4,5,10,11],"海滨灯塔与草原，冲浪胜地","海滨,灯塔,情侣"]
+];
+function buildDest(s){
+  return { id:uid(), name:s[0], province:s[1], type:s[2], playStyle:s[3], best:s[4],
+    desc:s[5], tags:(s[6]||"").split(",").filter(Boolean), photo:[], video:[], addedByUser:false };
+}
 async function seedIfNeeded(){
-  const done = await getMeta("seeded", false);
-  if(done) return;
+  const ver = await getMeta("seedVersion", 0);
+  if(ver >= SEED_VERSION) return;
+  const existing = await dbAll("destinations");
+  const have = new Set(existing.map(d=>d.name));
   for(const d of SEED_DEST){
+    if(have.has(d.name)) continue;
     await dbPut("destinations", {id:uid(), name:d.name, province:d.province, type:d.type,
       playStyle:d.playStyle, best:d.best, tags:d.tags, desc:d.desc, photo:d.photo, video:d.video, addedByUser:false});
   }
+  for(const s of SEED_MORE){
+    if(have.has(s[0])) continue;
+    await dbPut("destinations", buildDest(s));
+  }
+  await setMeta("seedVersion", SEED_VERSION);
   await setMeta("seeded", true);
+}
+
+/* ============ 拍照/拍视频建议：有专属则用，否则按类型推导 ============ */
+function destTips(d){
+  const out = { photo:[], video:[] };
+  if((d.photo&&d.photo.length)||(d.video&&d.video.length)){
+    (d.photo||[]).forEach(x=>out.photo.push(typeof x==="string"?{angle:"推荐机位",content:x}:x));
+    (d.video||[]).forEach(x=>out.video.push(typeof x==="string"?{angle:"拍摄方式",content:x}:x));
+    return out;
+  }
+  const byType = {
+    "海岛":[["日出/日落机位","黄金时刻拍海平线金光与逆光剪影"],["对称倒影","找无风水面拍倒影；水下用广角"]],
+    "自然":[["侧逆光层次","清晨或黄昏侧逆光突出山体林线"],["前景框景","用树枝、岩石当前景增加纵深"]],
+    "人文":[["对称中轴","拍建筑中轴对称；抓拍本地人细节特写"],["光影巷弄","利用檐下、窗棂的光影斑驳"]],
+    "城市":[["高点俯拍","登高拍天际线与城市网格"],["街角抓拍","抓拍生活瞬间，冷暖光对比"]],
+    "古镇":[["清晨无人巷","趁早拍空巷；傍晚红灯笼倒映水面"],["门洞廊棚","用门洞或廊棚做引导线纵深"]],
+    "雪山":[["日照金山","日出前后拍雪峰金光"],["广角压迫感","低角度广角强调雪峰体量"]],
+    "草原":[["地平线低机位","压到地面拍牛羊与天地线"],["曲线构图","利用河曲或公路 S 形引导线"]],
+    "沙漠":[["脊线风纹","低角度拍沙丘脊线与风纹"],["人影点缀","用人物剪影交代尺度"]],
+    "湖泊":[["镜面倒影","无风时拍上下对称倒影"],["晨雾空镜","清晨薄雾配远山层次"]],
+    "温泉":[["水汽氛围","逆光拍蒸汽缭绕"],["环境连带","带出雪山或森林环境"]]
+  };
+  (byType[d.type]||byType["自然"]).forEach(x=>out.photo.push({angle:x[0],content:x[1]}));
+  const vt = {
+    "海岛":"航拍海岸线慢推；海浪慢动作配环境音",
+    "自然":"航拍或摇镜交代大环境；延时拍光影云海",
+    "人文":"慢走过巷的跟拍；夜景灯光长镜",
+    "城市":"延时拍车流与日夜转换；第一视角 citywalk",
+    "古镇":"摇橹船或漫步长镜；夜景延时",
+    "雪山":"日照金山延时；徒步第一视角",
+    "草原":"骑马或驱车跟拍；银河延时",
+    "沙漠":"沙丘行走跟拍；驼队剪影",
+    "湖泊":"湖面漫步空镜；倒影对称摇移",
+    "温泉":"蒸汽升腾慢镜；环境连带空镜"
+  }[d.type] || "航拍大环境 + 延时";
+  out.video.push({angle:"推荐拍摄",content:vt});
+  return out;
+}
+
+/* ============ 发现频道（主题榜单，提高推荐量）============ */
+const CHANNELS = [
+  {id:"season", name:"当季精选", icon:"🌸", desc:"本月最佳", f:(d,m)=>d.best.includes(m)},
+  {id:"niche",  name:"小众秘境", icon:"🧭", desc:"人少景美", f:d=>d.tags.includes("小众")},
+  {id:"photo",  name:"摄影天堂", icon:"📷", desc:"出片率高", f:d=>d.playStyle==="摄影"||d.tags.includes("摄影")},
+  {id:"family", name:"亲子遛娃", icon:"🧸", desc:"带娃友好", f:d=>d.tags.includes("亲子")},
+  {id:"couple", name:"情侣蜜月", icon:"💗", desc:"浪漫目的地", f:d=>d.tags.includes("情侣")},
+  {id:"food",   name:"美食地图", icon:"🍜", desc:"吃遍当地", f:d=>d.playStyle==="美食"||d.tags.includes("美食")},
+  {id:"summer", name:"避暑胜地", icon:"🧊", desc:"清凉一夏", f:d=>d.tags.includes("避暑")},
+  {id:"autumn", name:"赏秋地图", icon:"🍁", desc:"层林尽染", f:d=>d.tags.includes("秋色")},
+  {id:"island", name:"海岛度假", icon:"🏝️", desc:"海与沙滩", f:d=>d.type==="海岛"},
+  {id:"ancient",name:"古镇慢游", icon:"🏮", desc:"枕水人家", f:d=>d.type==="古镇"||d.tags.includes("古镇")},
+  {id:"hike",   name:"徒步探险", icon:"🥾", desc:"走向山野", f:d=>d.playStyle==="探险"||d.tags.includes("徒步")},
+  {id:"snow",   name:"雪山湖泊", icon:"🏔️", desc:"高原雪线", f:d=>d.type==="雪山"||d.type==="湖泊"}
+];
+
+/* ============ 外部搜索渠道 ============ */
+function extLinks(kw){
+  const q = encodeURIComponent(kw);
+  return [
+    ["小红书","https://www.xiaohongshu.com/search_result?keyword="+q],
+    ["抖音","https://www.douyin.com/search/"+q],
+    ["B站","https://search.bilibili.com/all?keyword="+q],
+    ["马蜂窝","https://www.mafengwo.cn/search/q.php?q="+q],
+    ["高德地图","https://uri.amap.com/search?keyword="+q],
+    ["知乎","https://www.zhihu.com/search?type=content&q="+q]
+  ];
+}
+function extRow(kw){
+  if(!kw) return "";
+  return `<div style="margin-top:8px"><span class="meta">站外搜索：</span>` +
+    extLinks(kw).map(([n,u])=>`<a class="ext" href="${u}" target="_blank" rel="noopener">🔎 ${n}</a>`).join("") +
+    `</div>`;
 }
 
 /* ============ 状态 & 路由 ============ */
@@ -339,20 +552,40 @@ async function fillGuideList(){
 function exploreView(){
   return `
   <div class="card">
+    <h3 style="font-size:15px">🔍 搜索目的地</h3>
     <input id="searchKw" placeholder="搜索目的地 / 关键词，如 海岛、摄影、秋天…" oninput="debounceSearch()">
     <div class="row" style="margin-top:10px">
       <select id="fProv"><option value="">全部省份</option></select>
-      <select id="fType"><option value="">全部类型</option><option>自然</option><option>人文</option><option>城市</option><option>海岛</option></select>
+      <select id="fType"><option value="">全部类型</option></select>
     </div>
     <div class="row" style="margin-top:10px">
       <select id="fSeason"><option value="">全部季节</option><option value="1">春</option><option value="2">夏</option><option value="3">秋</option><option value="4">冬</option></select>
-      <select id="fStyle"><option value="">全部玩法</option><option>休闲</option><option>摄影</option><option>探险</option><option>美食</option><option>历史</option></select>
+      <select id="fStyle"><option value="">全部玩法</option></select>
     </div>
     <div class="actions" style="margin-top:10px">
-      <button class="sm" data-act="doSearch">搜索</button>
+      <button class="sm primary" data-act="doSearch">站内搜索</button>
       <button class="sm ghost" data-act="clearSearch">清空</button>
     </div>
-    <div id="searchRes" style="margin-top:12px"></div>
+    <div id="extForKw"></div>
+    <div id="searchRes" style="margin-top:6px"></div>
+  </div>
+  <div class="card">
+    <h3 style="font-size:15px">🧭 发现频道</h3>
+    <div class="meta">点频道，看整批推荐</div>
+    <div class="chips" id="channels" style="margin-top:8px"></div>
+    <div id="channelRes" style="margin-top:6px"></div>
+  </div>
+  <div class="card">
+    <h3 style="font-size:15px">✨ 智能推荐</h3>
+    <div class="meta">按你的偏好打分排序，出 Top 推荐</div>
+    <label>类型（可多选）</label><div class="chips" data-pref="type"></div>
+    <label>人群（可多选）</label><div class="chips" data-pref="crowd"></div>
+    <div class="row" style="margin-top:6px">
+      <select id="pSeason"><option value="">季节不限</option><option value="1">春</option><option value="2">夏</option><option value="3">秋</option><option value="4">冬</option></select>
+      <select id="pStyle"><option value="">玩法不限</option></select>
+    </div>
+    <div class="actions" style="margin-top:10px"><button class="sm primary" data-act="smartRec">生成推荐</button></div>
+    <div id="recRes" style="margin-top:6px"></div>
   </div>
   <div class="card">
     <h3>🔔 推送中心</h3>
@@ -362,20 +595,58 @@ function exploreView(){
     <div id="pushList" style="margin-top:10px"></div>
   </div>`;
 }
+
+function destCardHTML(d){
+  const tips = destTips(d);
+  return `<div class="card">
+    <h3>${esc(d.name)} <span class="meta" style="font-weight:400">${esc(d.province)}·${esc(d.type)}·${esc(d.playStyle)}</span></h3>
+    <div class="meta">最佳季节：${(d.best||[]).map(m=>MONTHS[m]).join("、")||"—"}</div>
+    <p style="font-size:14px;margin:6px 0">${esc(d.desc)}</p>
+    ${(d.tags||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join("")}
+    <details>
+      <summary>📸 拍照 / 视频建议</summary>
+      <ul style="margin:6px 0 0;padding-left:18px;font-size:14px">
+        ${tips.photo.map(p=>`<li><b>${esc(p.angle)}</b> — ${esc(p.content)}</li>`).join("")}
+        ${tips.video.map(p=>`<li>🎥 <b>${esc(p.angle)}</b> — ${esc(p.content)}</li>`).join("")}
+      </ul>
+    </details>
+    <div class="actions">
+      <button class="sm primary" data-act="destToPlan" data-id="${d.id}">加入计划</button>
+      <button class="sm" data-act="destToGuide" data-id="${d.id}">存为攻略</button>
+      <button class="sm" data-act="destRemind" data-id="${d.id}">当季提醒</button>
+    </div>
+    ${extRow(d.name + " " + d.province)}
+  </div>`;
+}
+
 async function fillExplore(){
-  // 省份下拉
+  // 下拉：从实际数据生成
   const dests = await dbAll("destinations");
-  const provs = [...new Set(dests.map(d=>d.province))].sort();
-  const sel = $("#fProv");
-  if(sel) sel.innerHTML = `<option value="">全部省份</option>` + provs.map(p=>`<option>${esc(p)}</option>`).join("");
+  const provs = [...new Set(dests.map(d=>d.province))].sort((a,b)=>a.localeCompare(b,"zh"));
+  const types = [...new Set(dests.map(d=>d.type))];
+  const styles = [...new Set(dests.map(d=>d.playStyle))];
+  const fp=$("#fProv"), ft=$("#fType"), fs=$("#fStyle"), ps=$("#pStyle");
+  if(fp) fp.innerHTML = `<option value="">全部省份</option>`+provs.map(p=>`<option>${esc(p)}</option>`).join("");
+  if(ft) ft.innerHTML = `<option value="">全部类型</option>`+types.map(t=>`<option>${esc(t)}</option>`).join("");
+  if(fs) fs.innerHTML = `<option value="">全部玩法</option>`+styles.map(s=>`<option>${esc(s)}</option>`).join("");
+  if(ps) ps.innerHTML = `<option value="">玩法不限</option>`+styles.map(s=>`<option>${esc(s)}</option>`).join("");
+  // 发现频道
+  const ch = $("#channels");
+  if(ch) ch.innerHTML = CHANNELS.map(c=>`<span class="chip" data-act="channel" data-k="${c.id}">${c.icon} ${c.name}</span>`).join("");
+  // 智能推荐偏好 chips
+  const prefTypes = ["自然","人文","城市","海岛","古镇","雪山","草原","沙漠","湖泊","温泉"].filter(t=>types.includes(t));
+  const prefCrowd = ["亲子","情侣","小众"];
+  const tBox = $('[data-pref="type"]'), cBox = $('[data-pref="crowd"]');
+  if(tBox) tBox.innerHTML = prefTypes.map(t=>`<span class="chip" data-v="${t}">${t}</span>`).join("");
+  if(cBox) cBox.innerHTML = prefCrowd.map(t=>`<span class="chip" data-v="${t}">${t}</span>`).join("");
+  // 偏好 chip 点击切换（频道 chip 交给事件委托）
+  $$('[data-pref] .chip').forEach(c=> c.onclick = ()=> c.classList.toggle("on"));
   // 推送开关
   const s = await getMeta("pushSeasonal", true); const t = await getMeta("pushPretrip", true);
   $("#tSeason").checked = !!s; $("#tTrip").checked = !!t;
   $("#tSeason").onchange = ()=> setMeta("pushSeasonal", $("#tSeason").checked);
   $("#tTrip").onchange = ()=> setMeta("pushPretrip", $("#tTrip").checked);
-  // 推送列表
-  const items = await getMeta("pushItems", []);
-  renderPushList(items);
+  renderPushList(await getMeta("pushItems", []));
 }
 function renderPushList(items){
   const el = $("#pushList"); if(!el) return;
@@ -386,10 +657,42 @@ function renderPushList(items){
       ${it.dests?`<div style="margin-top:4px">${it.dests.map(d=>`<span class="tag">${esc(d.name)}</span>`).join("")}</div>`:""}
     </div>`).join("");
 }
+function renderDestList(box, list, note){
+  if(!box) return;
+  if(!list.length){ box.innerHTML = `<div class="empty">暂时没有匹配，换个条件试试</div>`; return; }
+  const shown = list.slice(0,30);
+  box.innerHTML = `<div class="meta" style="margin-bottom:6px">${note}${list.length} 个${list.length>30?"（显示前 30）":""}</div>` + shown.map(d=>destCardHTML(d)).join("");
+}
+async function showChannel(id){
+  const c = CHANNELS.find(x=>x.id===id); if(!c) return;
+  const m = new Date().getMonth()+1;
+  const dests = await dbAll("destinations");
+  const list = dests.filter(d=>c.f(d,m)).sort((a,b)=> (a.province+a.name).localeCompare(b.province+b.name,"zh"));
+  renderDestList($("#channelRes"), list, `${c.icon} ${c.name}：`);
+}
+async function smartRec(){
+  const selTypes = $$('[data-pref="type"] .chip.on').map(c=>c.dataset.v);
+  const selCrowd = $$('[data-pref="crowd"] .chip.on').map(c=>c.dataset.v);
+  const season = $("#pSeason").value, style = $("#pStyle").value;
+  const hasPref = selTypes.length||selCrowd.length||season||style;
+  const m = new Date().getMonth()+1;
+  const dests = await dbAll("destinations");
+  const scored = dests.map(d=>{
+    let sc = 0;
+    if(selTypes.length){ sc += selTypes.includes(d.type) ? 2 : -1; }
+    selCrowd.forEach(c=>{ if((d.tags||[]).includes(c)) sc += 2; });
+    if(season && d.best.some(x=>SEASON[season].includes(x))) sc += 3;
+    if(style && d.playStyle===style) sc += 2;
+    if(d.best.includes(m)) sc += 1;
+    return {d, sc};
+  }).filter(x=> hasPref ? x.sc>0 : true).sort((a,b)=> b.sc-a.sc);
+  renderDestList($("#recRes"), scored.slice(0,12).map(x=>x.d), hasPref?"✨ 为你推荐：":"✨ 当季热门：");
+}
 let _searchTimer;
 function debounceSearch(){ clearTimeout(_searchTimer); _searchTimer=setTimeout(doSearch, 300); }
 async function doSearch(){
-  const kw = ($("#searchKw").value||"").trim().toLowerCase();
+  const kw = ($("#searchKw").value||"").trim();
+  const kwl = kw.toLowerCase();
   const prov = $("#fProv").value, type=$("#fType").value, season=$("#fSeason").value, style=$("#fStyle").value;
   const dests = await dbAll("destinations");
   const res = dests.filter(d=>{
@@ -397,26 +700,14 @@ async function doSearch(){
     if(type && d.type!==type) return false;
     if(style && d.playStyle!==style) return false;
     if(season){ const ms=SEASON[season]; if(!d.best.some(m=>ms.includes(m))) return false; }
-    if(kw){
-      const hay = (d.name+d.desc+(d.tags||[]).join("")+(d.province)).toLowerCase();
-      if(!hay.includes(kw)) return false;
-    }
+    if(kwl){ const hay=(d.name+d.desc+(d.tags||[]).join("")+d.province).toLowerCase(); if(!hay.includes(kwl)) return false; }
     return true;
   });
+  const kwBox = $("#extForKw");
+  if(kwBox) kwBox.innerHTML = kw ? `<div class="meta" style="margin:10px 0 0">站外搜索「${esc(kw)}」：</div>${extRow(kw)}` : "";
   const box = $("#searchRes");
-  if(!res.length){ box.innerHTML = `<div class="empty">没有匹配的目的地，可点右上角“新增目的地”补充</div>`; return; }
-  box.innerHTML = `<div class="meta" style="margin-bottom:6px">找到 ${res.length} 个</div>` + res.map(d=>`
-    <div class="card">
-      <h3>${esc(d.name)} <span class="meta" style="font-weight:400">${esc(d.province)}·${esc(d.type)}·${esc(d.playStyle)}</span></h3>
-      <div class="meta">最佳季节：${(d.best||[]).map(m=>MONTHS[m]).join("、")||"—"}</div>
-      <p style="font-size:14px;margin:6px 0">${esc(d.desc)}</p>
-      ${(d.tags||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join("")}
-      <div class="actions">
-        <button class="sm primary" data-act="destToPlan" data-id="${d.id}">加入计划</button>
-        <button class="sm" data-act="destToGuide" data-id="${d.id}">存为攻略</button>
-        <button class="sm" data-act="destRemind" data-id="${d.id}">当季提醒</button>
-      </div>
-    </div>`).join("");
+  if(!res.length){ box.innerHTML = `<div class="empty">站内没有匹配目的地。换个关键词，或用上面的站外搜索，或点右上角“新增目的地”。</div>`; return; }
+  renderDestList(box, res, "站内找到 ");
 }
 
 /* ============ 模块2：游玩日志 ============ */
@@ -775,7 +1066,10 @@ function handleAct(act, el){
     case "destToGuide": dbGet("destinations",id).then(d=>guideForm({kind:"guide",destination:d.name})); break;
     case "destRemind": destRemind(id); break;
     case "doSearch": doSearch(); break;
-    case "clearSearch": $("#searchKw").value=""; $("#fProv").value=""; $("#fType").value=""; $("#fSeason").value=""; $("#fStyle").value=""; doSearch(); break;
+    case "channel": showChannel(el.dataset.k); break;
+    case "smartRec": smartRec(); break;
+    case "clearSearch": $("#searchKw").value=""; ["fProv","fType","fSeason","fStyle"].forEach(i=>{const e=$("#"+i); if(e) e.value="";});
+      ["searchRes","extForKw","channelRes","recRes"].forEach(i=>{const e=$("#"+i); if(e) e.innerHTML="";}); break;
     case "checkPush": checkPush(true); break;
     case "closeModal": closeModal(); break;
     case "savePlan": savePlan(id); break;
