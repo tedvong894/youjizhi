@@ -1,0 +1,1004 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>游记志 · 个人旅游记录</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="theme-color" content="#4a7ba6">
+<style>
+  :root{
+    --bg:#f7f5f0; --panel:#ffffff; --text:#2b2b2b; --muted:#8a8a8a;
+    --line:#e7e3da; --brand:#4a7ba6; --brand-soft:#eaf1f6; --amber:#d99a4e;
+    --green:#5b9a6b; --red:#c46a5e; --radius:14px; --shadow:0 1px 3px rgba(0,0,0,.06);
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+    background:var(--bg); color:var(--text); font-size:15px; line-height:1.5;
+    padding-bottom:72px;
+  }
+  /* 顶栏 */
+  .topbar{
+    position:sticky; top:0; z-index:20; background:var(--bg);
+    display:flex; align-items:center; justify-content:space-between;
+    padding:12px 16px; border-bottom:1px solid var(--line);
+  }
+  .brand{font-size:18px; font-weight:600; letter-spacing:.5px}
+  .brand small{color:var(--muted); font-weight:400; font-size:12px; margin-left:6px}
+  .topactions{display:flex; gap:8px}
+  /* 通用控件 */
+  button{
+    font:inherit; cursor:pointer; border:1px solid var(--line); background:var(--panel);
+    color:var(--text); border-radius:10px; padding:7px 12px; transition:.15s;
+  }
+  button:hover{border-color:var(--brand)}
+  button.primary{background:var(--brand); color:#fff; border-color:var(--brand)}
+  button.primary:hover{filter:brightness(1.05)}
+  button.ghost{background:transparent; border-color:transparent; color:var(--brand)}
+  button.sm{padding:4px 9px; font-size:13px; border-radius:8px}
+  button.danger{color:var(--red); border-color:#f0d8d3}
+  input,select,textarea{
+    font:inherit; width:100%; padding:9px 11px; border:1px solid var(--line);
+    border-radius:10px; background:var(--panel); color:var(--text); outline:none;
+  }
+  input:focus,select:focus,textarea:focus{border-color:var(--brand)}
+  textarea{resize:vertical; min-height:64px}
+  label{display:block; font-size:13px; color:var(--muted); margin:10px 0 4px}
+  .row{display:flex; gap:10px}
+  .row>*{flex:1}
+  /* 内容区 */
+  main{padding:16px; max-width:880px; margin:0 auto}
+  .card{
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    padding:14px; margin-bottom:12px; box-shadow:var(--shadow);
+  }
+  .card h3{margin:0 0 6px; font-size:16px}
+  .meta{color:var(--muted); font-size:13px}
+  .tag{display:inline-block; background:var(--brand-soft); color:var(--brand);
+    font-size:12px; padding:2px 8px; border-radius:20px; margin:2px 4px 2px 0}
+  .tag.amber{background:#fbeed9; color:#b07d2e}
+  .tag.green{background:#e4f0e7; color:#3f7a52}
+  .pill{display:inline-flex; align-items:center; gap:4px; font-size:12px; color:var(--muted); border:1px solid var(--line); padding:2px 9px; border-radius:20px}
+  .empty{text-align:center; color:var(--muted); padding:40px 16px}
+  .actions{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+  /* 子标签 */
+  .subtabs{display:flex; gap:6px; margin-bottom:14px; flex-wrap:wrap}
+  .subtabs button{border:none; background:transparent; color:var(--muted); padding:6px 4px; border-bottom:2px solid transparent; border-radius:0}
+  .subtabs button.active{color:var(--brand); border-bottom-color:var(--brand); font-weight:600}
+  /* 媒体网格 */
+  .grid{display:grid; grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); gap:8px; margin-top:10px}
+  .grid .item{border:1px solid var(--line); border-radius:10px; overflow:hidden; background:#0001}
+  .grid .item img,.grid .item video{width:100%; height:96px; object-fit:cover; display:block}
+  .grid .item .cap{padding:5px 7px; font-size:11px; color:var(--muted)}
+  /* 底部 Tab */
+  .tabbar{
+    position:fixed; bottom:0; left:0; right:0; z-index:20;
+    display:flex; background:var(--panel); border-top:1px solid var(--line);
+    padding:6px 0 calc(6px + env(safe-area-inset-bottom));
+  }
+  .tabbar button{
+    flex:1; border:none; background:transparent; color:var(--muted);
+    display:flex; flex-direction:column; align-items:center; gap:2px; font-size:12px; padding:6px 0;
+  }
+  .tabbar button.active{color:var(--brand)}
+  .tabbar button .ic{font-size:20px}
+  /* 模态框 */
+  .modal{position:fixed; inset:0; z-index:50; background:rgba(40,40,40,.45);
+    display:flex; align-items:flex-end; justify-content:center}
+  .modal.hidden{display:none}
+  .modal-box{
+    background:var(--bg); width:100%; max-width:560px; max-height:92vh; overflow:auto;
+    border-radius:18px 18px 0 0; padding:18px 18px calc(18px + env(safe-area-inset-bottom));
+    animation:up .2s ease;
+  }
+  @keyframes up{from{transform:translateY(20px);opacity:.6}to{transform:none;opacity:1}}
+  .modal-box h2{margin:0 0 6px; font-size:18px}
+  .modal-actions{display:flex; gap:10px; margin-top:16px}
+  .modal-actions button{flex:1}
+  /* 提示条 */
+  .toast{position:fixed; left:50%; bottom:88px; transform:translateX(-50%);
+    background:#2b2b2b; color:#fff; padding:9px 16px; border-radius:22px; font-size:13px; z-index:60; opacity:0; transition:.25s}
+  .toast.show{opacity:1}
+  /* 短视频分镜 */
+  .scene{border-left:3px solid var(--brand); padding:8px 12px; margin:8px 0; background:var(--panel); border-radius:0 10px 10px 0}
+  .scene .no{font-weight:600; color:var(--brand)}
+  .tip-box{background:var(--brand-soft); border-radius:10px; padding:12px; margin:10px 0; font-size:14px}
+  .tip-box b{color:var(--brand)}
+  .hidden{display:none!important}
+  .switch{display:flex; align-items:center; justify-content:space-between; padding:10px 0; border-bottom:1px solid var(--line)}
+  .switch:last-child{border-bottom:none}
+  details{margin:10px 0}
+  summary{cursor:pointer; color:var(--brand); font-size:14px}
+  .seg{display:flex; gap:6px; flex-wrap:wrap; margin:6px 0}
+  .seg button{padding:5px 10px; font-size:13px}
+  .seg button.on{background:var(--brand); color:#fff; border-color:var(--brand)}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">🧭 游记志<small>个人旅游记录</small></div>
+  <div class="topactions">
+    <button class="sm ghost" id="btnNotify">🔔 提醒</button>
+    <button class="sm ghost" id="btnExport">备份</button>
+    <button class="sm ghost" id="btnImport">恢复</button>
+  </div>
+</header>
+
+<main id="view"></main>
+
+<nav class="tabbar">
+  <button data-tab="records" class="active"><span class="ic">📋</span>游玩记录</button>
+  <button data-tab="logs"><span class="ic">📷</span>游玩日志</button>
+  <button data-tab="video"><span class="ic">🎬</span>短视频</button>
+</nav>
+
+<div class="modal hidden" id="modal"><div class="modal-box" id="modalBox"></div></div>
+<div class="toast" id="toast"></div>
+<input type="file" id="importFile" accept="application/json" class="hidden">
+
+<script>
+"use strict";
+/* ============ 基础工具 ============ */
+const $ = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => [...r.querySelectorAll(s)];
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,7);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const fmtDate = (d) => d ? new Date(d).toISOString().slice(0,10) : "";
+const MONTHS = ["","一月","二月","三月","四月","五月","六月","七月","八月","九月","十月","十一月","十二月"];
+const SEASON = {1:[12,1,2],2:[3,4,5],3:[6,7,8],4:[9,10,11]};
+function toast(msg){const t=$("#toast"); t.textContent=msg; t.classList.add("show"); clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove("show"),1800);}
+function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms);};}
+
+/* ============ IndexedDB ============ */
+const DB = { db:null };
+function openDB(){
+  return new Promise((res,rej)=>{
+    const r = indexedDB.open("youjizhiDB", 1);
+    r.onupgradeneeded = (e)=>{
+      const db = e.target.result;
+      const mk = (name)=>{ if(!db.objectStoreNames.contains(name)) db.createObjectStore(name,{keyPath:"id"}); };
+      ["records","logs","destinations","reminders","meta"].forEach(mk);
+      if(!db.transaction){}
+    };
+    r.onsuccess = ()=>{ DB.db = r.result; res(DB.db); };
+    r.onerror = ()=>rej(r.error);
+  });
+}
+function tx(store, mode){ return DB.db.transaction(store, mode).objectStore(store); }
+function dbPut(store, val){ return new Promise((res,rej)=>{ const r=tx(store,"readwrite").put(val); r.onsuccess=()=>res(val); r.onerror=()=>rej(r.error); }); }
+function dbGet(store, id){ return new Promise((res,rej)=>{ const r=tx(store,"readonly").get(id); r.onsuccess=()=>res(r.result); r.onerror=()=>rej(r.error); }); }
+function dbAll(store){ return new Promise((res,rej)=>{ const r=tx(store,"readonly").getAll(); r.onsuccess=()=>res(r.result||[]); r.onerror=()=>rej(r.error); }); }
+function dbDel(store, id){ return new Promise((res,rej)=>{ const r=tx(store,"readwrite").delete(id); r.onsuccess=()=>res(); r.onerror=()=>rej(r.error); }); }
+function getMeta(key, def){ return dbGet("meta", key).then(v=> v ? v.value : def); }
+function setMeta(key, value){ return dbPut("meta", {id:key, value}); }
+
+/* ============ 种子数据：目的地库 ============ */
+const SEED_DEST = [
+  {name:"桂林漓江",province:"广西",type:"自然",playStyle:"摄影",best:[3,4,9,10],tags:["山水","竹筏","日出"],desc:"喀斯特峰林倒影，水墨画质感；兴坪段二十元人民币背景取景地。",
+    photo:["清晨薄雾时拍逆光峰林剪影","竹筏上低角度拍水面倒影"],video:["航拍峰林曲线慢推","固定机位录竹筏划过水面"]},
+  {name:"张家界国家森林公园",province:"湖南",type:"自然",playStyle:"探险",best:[4,5,9,10],tags:["奇峰","云海","徒步"],desc:"三千奇峰拔地而起，云雾缭绕如仙境；天门山玻璃栈道刺激。",
+    photo:["云雾天拍峰林若隐若现","利用前景树丛做框景"],video:["缆车视角上升穿越云层","延时拍云海翻涌"]},
+  {name:"稻城亚丁",province:"四川",type:"自然",playStyle:"摄影",best:[9,10,4,5],tags:["雪山","秋色","高原"],desc:"三神山+牛奶海，秋季层林尽染，海拔高需缓行。",
+    photo:["日出金色光照雪山","湖边拍倒影对称构图"],video:["徒步跟拍第一视角","星空延时"]},
+  {name:"西湖",province:"浙江",type:"人文",playStyle:"休闲",best:[3,4,9,10],tags:["园林","断桥","夜游"],desc:"三面云山一面城，断桥残雪、苏堤春晓，城市里的诗意。",
+    photo:["清晨无人的断桥","黄昏雷峰夕照"],video:["摇橹船慢行水面","夜景灯光长曝"]},
+  {name:"大理洱海",province:"云南",type:"自然",playStyle:"休闲",best:[3,4,5,9,10],tags:["湖景","骑行","日落"],desc:"环海公路骑行，苍山洱海，喜洲稻田与白族村落。",
+    photo:["海边树木孤独感构图","骑行背影逆光"],video:["环海延时","海边发呆空镜"]},
+  {name:"丽江古城",province:"云南",type:"人文",playStyle:"休闲",best:[3,4,9,10],tags:["古镇","夜色","纳西"],desc:"小桥流水纳西古乐，玉龙雪山为背景，夜色酒吧街有氛围。",
+    photo:["巷弄光影斑驳","红灯笼夜景"],video:["巷子漫步跟拍","清晨空城"]},
+  {name:"厦门鼓浪屿",province:"福建",type:"城市",playStyle:"美食",best:[3,4,5,10,11],tags:["海岛","老建筑","咖啡"],desc:"万国建筑博览，转角遇到咖啡馆，海边散步。",
+    photo:["彩色老墙与三角梅","海边栈道"],video:["街角慢摇","海浪空镜"]},
+  {name:"三亚",province:"海南",type:"海岛",playStyle:"休闲",best:[11,12,1,2,3],tags:["海滩","潜水","日落"],desc:"椰风海浪，亚龙湾水质佳，适合躺平与潜水。",
+    photo:["椰林剪影日落","水下广角"],video:["海浪慢动作","航拍海岸线"]},
+  {name:"西安城墙",province:"陕西",type:"人文",playStyle:"美食",best:[3,4,5,9,10],tags:["古城","历史","小吃"],desc:"完整明城墙可骑行，回民街烟火气，兵马俑必看。",
+    photo:["城楼对称构图","红灯笼长街"],video:["城墙骑行跟拍","夜景延时"]},
+  {name:"成都",province:"四川",type:"城市",playStyle:"美食",best:[3,4,5,9,10,11],tags:["美食","熊猫","慢生活"],desc:"火锅串串盖碗茶，熊猫基地看团子，生活节奏慢。",
+    photo:["熊猫进食特写","火锅热气"],video:["市井街拍","美食特写快剪"]},
+  {name:"重庆",province:"重庆",type:"城市",playStyle:"摄影",best:[3,4,10,11],tags:["8D","夜景","轻轨"],desc:"魔幻立体城市，洪崖洞夜景、轻轨穿楼，出片率高。",
+    photo:["千与千寻夜景","轻轨穿楼"],video:["江边夜景延时","天桥俯拍车流"]},
+  {name:"上海外滩",province:"上海",type:"城市",playStyle:"摄影",best:[3,4,5,9,10,11,12],tags:["天际线","夜景","近代建筑"],desc:"万国建筑群对望陆家嘴，夜景经典机位。",
+    photo:["对岸天际线长焦","夜景车流长曝"],video:["浦东夜景延时","江风空镜"]},
+  {name:"黄山",province:"安徽",type:"自然",playStyle:"摄影",best:[4,5,9,10,11],tags:["奇松","云海","迎客松"],desc:"五岳归来不看山，云海日出震撼，徒步略累。",
+    photo:["迎客松剪影","云海翻腾"],video:["日出延时","山脊行走跟拍"]},
+  {name:"故宫",province:"北京",type:"人文",playStyle:"历史",best:[3,4,10,11],tags:["宫殿","红墙","历史"],desc:"明清皇宫，红墙金瓦，角楼与雪景绝美。",
+    photo:["红墙光影","角楼倒影"],video:["中轴线推进","雪落宫墙"]},
+  {name:"呼伦贝尔草原",province:"内蒙古",type:"自然",playStyle:"探险",best:[6,7,8,9],tags:["草原","骑马","星空"],desc:"风吹草低见牛羊，夏天绿浪无际，夜晚银河清晰。",
+    photo:["地平线低角度","骑马逆光"],video:["草原驰骋跟拍","银河延时"]},
+  {name:"茶卡盐湖",province:"青海",type:"自然",playStyle:"摄影",best:[6,7,8],tags:["天空之镜","倒影","盐"],desc:"晴天如镜面，拍天空之镜倒影，注意防风保暖。",
+    photo:["水面对称倒影","红裙点睛"],video:["湖面漫步","风起涟漪"]},
+  {name:"婺源",province:"江西",type:"人文",playStyle:"摄影",best:[3,4,10,11],tags:["油菜花","徽派","晨雾"],desc:"春天油菜花海配白墙黛瓦，秋天晒秋色彩浓。",
+    photo:["花海前景村落","晨雾炊烟"],video:["花田摇移","村落延时"]},
+  {name:"阳朔",province:"广西",type:"自然",playStyle:"休闲",best:[3,4,9,10],tags:["攀岩","遇龙河","竹筏"],desc:"十里画廊骑行，遇龙河竹筏比漓江更静谧。",
+    photo:["遇龙河晨雾","骑行乡道"],video:["竹筏漂流","田园航拍"]},
+  {name:"青岛",province:"山东",type:"城市",playStyle:"美食",best:[5,6,9,10],tags:["海滨","啤酒","红瓦"],desc:"红瓦绿树碧海蓝天，栈桥与啤酒节，海边骑行。",
+    photo:["红顶建筑俯拍","栈桥日落"],video:["海滨木栈道","啤酒节氛围"]},
+  {name:"拉萨布达拉宫",province:"西藏",type:"人文",playStyle:"摄影",best:[5,6,9,10],tags:["信仰","高原","宫殿"],desc:"高原圣城，布宫夜景与广场倒影，注意高反。",
+    photo:["广场水面倒影","转经人文"],video:["夜景延时","朝圣跟拍"]},
+  {name:"喀纳斯",province:"新疆",type:"自然",playStyle:"摄影",best:[9,10,6,7],tags:["秋色","湖怪","图瓦"],desc:"秋天白桦金黄映湖水，图瓦人村落原始。",
+    photo:["金黄白桦倒影","晨雾湖面"],video:["湖畔延时","林间漫步"]},
+  {name:"千岛湖",province:"浙江",type:"自然",playStyle:"休闲",best:[3,4,5,9,10],tags:["湖岛","骑行","水质"],desc:"清澈湖水千岛点缀，环湖骑行与艇上发呆。",
+    photo:["湖岛俯拍","晨雾水面"],video:["环湖航拍","艇上空镜"]},
+  {name:"莫干山",province:"浙江",type:"自然",playStyle:"休闲",best:[3,4,5,9,10,11],tags:["民宿","竹海","避暑"],desc:"竹海避暑，精品民宿聚集，适合周末放空。",
+    photo:["竹林光影","民宿窗景"],video:["竹海风声空镜","院落慢摇"]},
+  {name:"凤凰古城",province:"湖南",type:"人文",playStyle:"休闲",best:[3,4,9,10],tags:["吊脚楼","沱江","夜色"],desc:"沱江吊脚楼，夜色灯火与晨雾各有味道。",
+    photo:["晨雾江面","夜色灯影"],video:["江边慢行","夜景延时"]},
+  {name:"西塘古镇",province:"浙江",type:"人文",playStyle:"休闲",best:[3,4,5,9,10,11],tags:["水乡","廊棚","夜灯"],desc:"烟雨长廊沿河而建，夜色红灯笼倒映水面，比乌镇清静。",
+    photo:["廊棚光影纵深","夜灯倒影"],video:["摇橹船穿过桥洞","雨巷空镜"]},
+  {name:"平遥古城",province:"山西",type:"人文",playStyle:"历史",best:[4,5,9,10],tags:["晋商","城墙","镖局"],desc:"完整明清县城，票号镖局林立，城墙俯瞰灰瓦屋顶。",
+    photo:["城墙俯瞰屋顶","票号招牌特写"],video:["古城墙长镜","夜间灯会"]},
+  {name:"霞浦",province:"福建",type:"自然",playStyle:"摄影",best:[4,5,6,9,10,11],tags:["滩涂","光影","渔民"],desc:"中国最美滩涂，日出日落光影千变，摄影人朝圣地。",
+    photo:["滩涂竹竿矩阵","渔民撒网剪影"],video:["日出延时","潮汐光影慢录"]},
+  {name:"泸沽湖",province:"云南",type:"自然",playStyle:"摄影",best:[3,4,5,9,10,11],tags:["高原湖","摩梭","猪槽船"],desc:"高原湖泊湛蓝如镜，摩梭文化与猪槽船，安静治愈。",
+    photo:["湖面倒影对称","猪槽船逆光"],video:["湖畔发呆空镜","星河延时"]},
+  {name:"万宁日月湾",province:"海南",type:"海岛",playStyle:"探险",best:[10,11,12,1,2,3],tags:["冲浪","椰林","海滩"],desc:"国内冲浪胜地，浪型稳定，年轻氛围浓，适合拍动感素材。",
+    photo:["冲浪动态抓拍","椰林海岸线"],video:["冲浪连拍慢动作","海边日落"]},
+  {name:"威海",province:"山东",type:"城市",playStyle:"休闲",best:[5,6,7,9,10],tags:["海滨","环海路","日落"],desc:"环海路自驾绝美，火炬八街出片，海鲜便宜，节奏慢。",
+    photo:["火炬八街尽头海景","环海路弯道"],video:["环海路自驾跟拍","礁石海浪"]},
+  {name:"色达",province:"四川",type:"人文",playStyle:"摄影",best:[5,6,7,8,9],tags:["红房","信仰","高原"],desc:"漫山绛红僧舍，信仰感极强，注意高原反应与参观礼仪。",
+    photo:["山坡俯瞰红房海","转经人文"],video:["日出照红房延时","僧侣背影跟拍"]},
+  {name:"镇远古镇",province:"贵州",type:"人文",playStyle:"休闲",best:[3,4,5,9,10],tags:["㵲阳河","太极城","夜色"],desc:"㵲阳河S形穿城，形似太极，夜色两岸灯火如画。",
+    photo:["河湾 S 形构图","夜灯河面"],video:["河上泛舟","夜景延时长镜"]},
+  {name:"东极岛",province:"浙江",type:"海岛",playStyle:"休闲",best:[5,6,7,8,9,10],tags:["海岛","灯塔","日出"],desc:"中国大陆最东端有人岛，看第一缕阳光，海鲜与灯塔。",
+    photo:["灯塔与海平线","日出金光海面"],video:["海边空镜","日出延时"]},
+  {name:"雨崩村",province:"云南",type:"自然",playStyle:"探险",best:[4,5,6,9,10,11],tags:["徒步","雪山","原始"],desc:"梅里雪山脚下的原始村落，徒步进村，神瀑与冰湖秘境。",
+    photo:["雪山俯瞰村舍","经幡与神瀑"],video:["徒步第一视角","日照金山延时"]}
+];
+async function seedIfNeeded(){
+  const done = await getMeta("seeded", false);
+  if(done) return;
+  for(const d of SEED_DEST){
+    await dbPut("destinations", {id:uid(), name:d.name, province:d.province, type:d.type,
+      playStyle:d.playStyle, best:d.best, tags:d.tags, desc:d.desc, photo:d.photo, video:d.video, addedByUser:false});
+  }
+  await setMeta("seeded", true);
+}
+
+/* ============ 状态 & 路由 ============ */
+let state = { tab:"records", sub:"plan", logId:null, videoSrc:null };
+let LAST_VIDEO = null;
+
+function render(){
+  const v = $("#view");
+  if(state.tab==="records") v.innerHTML = renderRecords();
+  else if(state.tab==="logs") v.innerHTML = state.logId ? renderLogDetail() : renderLogs();
+  else if(state.tab==="video") v.innerHTML = renderVideo();
+  bindView();
+}
+
+/* ============ 模块1：游玩记录 ============ */
+function renderRecords(){
+  const sub = state.sub;
+  const subs = [["plan","旅游计划"],["guide","打卡攻略"],["done","已完成"],["explore","探索/推送"]];
+  const tabs = subs.map(([k,t])=>`<button class="${sub===k?'active':''}" data-act="sub" data-k="${k}">${t}</button>`).join("");
+  let body = "";
+  if(sub==="plan") body = planList("plan");
+  else if(sub==="guide") body = guideList();
+  else if(sub==="done") body = planList("done");
+  else if(sub==="explore") body = exploreView();
+  return `<div class="subtabs">${tabs}</div>
+    <div class="actions" style="margin-bottom:12px">
+      ${sub==="guide" ? `<button class="primary sm" data-act="newGuide">+ 新建攻略</button>` : ""}
+      ${sub==="plan" ? `<button class="primary sm" data-act="newPlan">+ 新建计划</button>` : ""}
+      ${sub==="explore" ? `<button class="primary sm" data-act="newDest">+ 新增目的地</button>` : ""}
+    </div>${body}`;
+}
+function planList(kind){
+  // kind: plan(待出行) / done(已完成)
+  return `<div id="planWrap" data-kind="${kind}"></div>`;
+}
+async function fillPlanList(){
+  const kind = $("#planWrap").dataset.kind;
+  const all = await dbAll("records");
+  const list = all.filter(r=>r.kind==="plan" && (kind==="done" ? r.status==="done" : r.status!=="done"))
+                  .sort((a,b)=> (b.startDate||"").localeCompare(a.startDate||""));
+  const wrap = $("#planWrap");
+  if(!list.length){ wrap.innerHTML = `<div class="empty">${kind==="done"?"还没有已完成的行程":"还没有旅游计划，点右上角新建"}</div>`; return; }
+  wrap.innerHTML = list.map(r=>`
+    <div class="card">
+      <h3>${esc(r.title)}</h3>
+      <div class="meta">📍 ${esc(r.destination||"未填目的地")} · ${r.startDate?fmtDate(r.startDate):""}${r.endDate?" ~ "+fmtDate(r.endDate):""}</div>
+      ${(r.tags||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join("")}
+      ${r.notes?`<p style="margin:8px 0 0;font-size:14px">${esc(r.notes)}</p>`:""}
+      <div class="actions">
+        <button class="sm" data-act="editPlan" data-id="${r.id}">编辑</button>
+        <button class="sm" data-act="planToLog" data-id="${r.id}">写日志</button>
+        ${kind!=="done"?`<button class="sm green" data-act="finishPlan" data-id="${r.id}">标记完成</button>`
+                      :`<button class="sm" data-act="unfinishPlan" data-id="${r.id}">撤回完成</button>`}
+        <button class="sm danger" data-act="delPlan" data-id="${r.id}">删除</button>
+      </div>
+    </div>`).join("");
+}
+
+function guideList(){
+  return `<div id="guideWrap"></div>`;
+}
+async function fillGuideList(){
+  const all = await dbAll("records");
+  const list = all.filter(r=>r.kind==="guide").sort((a,b)=>b.updatedAt-a.updatedAt);
+  const wrap = $("#guideWrap");
+  if(!list.length){ wrap.innerHTML = `<div class="empty">还没有打卡攻略，点右上角新建</div>`; return; }
+  wrap.innerHTML = list.map(g=>`
+    <div class="card">
+      <h3>📍 ${esc(g.destination||g.title)}</h3>
+      <div class="meta">${g.title&&g.title!==g.destination?esc(g.title):""}</div>
+      <p style="font-size:14px;margin:8px 0 4px;color:var(--brand);font-weight:600">📸 拍照建议</p>
+      <ul style="margin:0;padding-left:18px;font-size:14px">${(g.photoTips||[]).map(t=>`<li><b>${esc(t.angle)}</b> — ${esc(t.content)}</li>`).join("")||"<li class='meta'>暂无</li>"}</ul>
+      <p style="font-size:14px;margin:10px 0 4px;color:var(--amber);font-weight:600">🎥 拍视频建议</p>
+      <ul style="margin:0;padding-left:18px;font-size:14px">${(g.videoTips||[]).map(t=>`<li><b>${esc(t.angle)}</b> — ${esc(t.content)}</li>`).join("")||"<li class='meta'>暂无</li>"}</ul>
+      <div class="actions">
+        <button class="sm" data-act="editGuide" data-id="${g.id}">编辑</button>
+        <button class="sm danger" data-act="delGuide" data-id="${g.id}">删除</button>
+      </div>
+    </div>`).join("");
+}
+
+function exploreView(){
+  return `
+  <div class="card">
+    <input id="searchKw" placeholder="搜索目的地 / 关键词，如 海岛、摄影、秋天…" oninput="debounceSearch()">
+    <div class="row" style="margin-top:10px">
+      <select id="fProv"><option value="">全部省份</option></select>
+      <select id="fType"><option value="">全部类型</option><option>自然</option><option>人文</option><option>城市</option><option>海岛</option></select>
+    </div>
+    <div class="row" style="margin-top:10px">
+      <select id="fSeason"><option value="">全部季节</option><option value="1">春</option><option value="2">夏</option><option value="3">秋</option><option value="4">冬</option></select>
+      <select id="fStyle"><option value="">全部玩法</option><option>休闲</option><option>摄影</option><option>探险</option><option>美食</option><option>历史</option></select>
+    </div>
+    <div class="actions" style="margin-top:10px">
+      <button class="sm" data-act="doSearch">搜索</button>
+      <button class="sm ghost" data-act="clearSearch">清空</button>
+    </div>
+    <div id="searchRes" style="margin-top:12px"></div>
+  </div>
+  <div class="card">
+    <h3>🔔 推送中心</h3>
+    <div class="switch"><span>当季目的地推荐</span><input type="checkbox" id="tSeason" style="width:auto" ${""}></div>
+    <div class="switch"><span>出行前 3 天提醒</span><input type="checkbox" id="tTrip" style="width:auto"></div>
+    <div class="actions"><button class="sm primary" data-act="checkPush">立即检查推送</button></div>
+    <div id="pushList" style="margin-top:10px"></div>
+  </div>`;
+}
+async function fillExplore(){
+  // 省份下拉
+  const dests = await dbAll("destinations");
+  const provs = [...new Set(dests.map(d=>d.province))].sort();
+  const sel = $("#fProv");
+  if(sel) sel.innerHTML = `<option value="">全部省份</option>` + provs.map(p=>`<option>${esc(p)}</option>`).join("");
+  // 推送开关
+  const s = await getMeta("pushSeasonal", true); const t = await getMeta("pushPretrip", true);
+  $("#tSeason").checked = !!s; $("#tTrip").checked = !!t;
+  $("#tSeason").onchange = ()=> setMeta("pushSeasonal", $("#tSeason").checked);
+  $("#tTrip").onchange = ()=> setMeta("pushPretrip", $("#tTrip").checked);
+  // 推送列表
+  const items = await getMeta("pushItems", []);
+  renderPushList(items);
+}
+function renderPushList(items){
+  const el = $("#pushList"); if(!el) return;
+  if(!items || !items.length){ el.innerHTML = `<div class="meta">暂无推送，点“立即检查推送”试试</div>`; return; }
+  el.innerHTML = items.map(it=>`
+    <div class="scene"><span class="no">${it.icon||"🔔"}</span> <b>${esc(it.title)}</b>
+      <div class="meta">${esc(it.desc||"")}</div>
+      ${it.dests?`<div style="margin-top:4px">${it.dests.map(d=>`<span class="tag">${esc(d.name)}</span>`).join("")}</div>`:""}
+    </div>`).join("");
+}
+let _searchTimer;
+function debounceSearch(){ clearTimeout(_searchTimer); _searchTimer=setTimeout(doSearch, 300); }
+async function doSearch(){
+  const kw = ($("#searchKw").value||"").trim().toLowerCase();
+  const prov = $("#fProv").value, type=$("#fType").value, season=$("#fSeason").value, style=$("#fStyle").value;
+  const dests = await dbAll("destinations");
+  const res = dests.filter(d=>{
+    if(prov && d.province!==prov) return false;
+    if(type && d.type!==type) return false;
+    if(style && d.playStyle!==style) return false;
+    if(season){ const ms=SEASON[season]; if(!d.best.some(m=>ms.includes(m))) return false; }
+    if(kw){
+      const hay = (d.name+d.desc+(d.tags||[]).join("")+(d.province)).toLowerCase();
+      if(!hay.includes(kw)) return false;
+    }
+    return true;
+  });
+  const box = $("#searchRes");
+  if(!res.length){ box.innerHTML = `<div class="empty">没有匹配的目的地，可点右上角“新增目的地”补充</div>`; return; }
+  box.innerHTML = `<div class="meta" style="margin-bottom:6px">找到 ${res.length} 个</div>` + res.map(d=>`
+    <div class="card">
+      <h3>${esc(d.name)} <span class="meta" style="font-weight:400">${esc(d.province)}·${esc(d.type)}·${esc(d.playStyle)}</span></h3>
+      <div class="meta">最佳季节：${(d.best||[]).map(m=>MONTHS[m]).join("、")||"—"}</div>
+      <p style="font-size:14px;margin:6px 0">${esc(d.desc)}</p>
+      ${(d.tags||[]).map(t=>`<span class="tag">${esc(t)}</span>`).join("")}
+      <div class="actions">
+        <button class="sm primary" data-act="destToPlan" data-id="${d.id}">加入计划</button>
+        <button class="sm" data-act="destToGuide" data-id="${d.id}">存为攻略</button>
+        <button class="sm" data-act="destRemind" data-id="${d.id}">当季提醒</button>
+      </div>
+    </div>`).join("");
+}
+
+/* ============ 模块2：游玩日志 ============ */
+function renderLogs(){
+  return `<div class="actions" style="margin-bottom:12px"><button class="primary sm" data-act="newLog">+ 新建日志</button></div>
+    <div id="logWrap"></div>`;
+}
+async function fillLogs(){
+  const logs = (await dbAll("logs")).sort((a,b)=> (b.date||"").localeCompare(a.date||"") || b.createdAt-b.createdAt);
+  const wrap = $("#logWrap");
+  if(!logs.length){ wrap.innerHTML = `<div class="empty">还没有日志。出游时随手拍，给短视频攒素材 🎬</div>`; return; }
+  wrap.innerHTML = logs.map(l=>{
+    const n = (l.media||[]).length, v=(l.media||[]).filter(m=>m.kind==="video").length;
+    return `<div class="card" data-act="openLog" data-id="${l.id}" style="cursor:pointer">
+      <h3>${esc(l.title||"未命名日志")}</h3>
+      <div class="meta">📅 ${l.date?fmtDate(l.date):""} · 📍 ${esc(l.location||"")} · 📷 ${n}（视频 ${v}）</div>
+      ${l.text?`<p style="font-size:14px;margin:8px 0 0">${esc(l.text).slice(0,80)}${l.text.length>80?"…":""}</p>`:""}
+    </div>`;
+  }).join("");
+}
+const urlCache = {};
+function objUrl(blob, id){ if(!urlCache[id]) urlCache[id] = URL.createObjectURL(blob); return urlCache[id]; }
+
+function renderLogDetail(){
+  return `<div class="actions" style="margin-bottom:10px"><button class="ghost sm" data-act="backLogs">← 返回</button></div><div id="logDetail"></div>`;
+}
+async function fillLogDetail(){
+  const l = await dbGet("logs", state.logId);
+  if(!l){ state.logId=null; render(); return; }
+  const media = l.media||[];
+  const grid = media.map(m=>`
+    <div class="item">
+      ${m.kind==="video"
+        ? `<video src="${objUrl(m.blob,m.id)}" muted playsinline></video>`
+        : `<img src="${objUrl(m.blob,m.id)}" alt="">`}
+      <div class="cap">${m.tags&&m.tags.golden?"🌟":""}${esc(m.tags&&m.tags.shot||"")} ${esc((m.tags&&m.tags.angle)||"")}</div>
+    </div>`).join("") || `<div class="meta">还没有素材，点下方“加照片/视频”</div>`;
+  let planLine = "";
+  if(l.planId){ const p = await dbGet("records", l.planId); if(p) planLine = `<div class="meta" style="margin-top:4px">🔗 关联计划：<b>${esc(p.title||"未命名")}</b></div>`; }
+  $("#logDetail").innerHTML = `
+    <div class="card">
+      <h3>${esc(l.title||"未命名日志")}</h3>
+      <div class="meta">📅 ${l.date?fmtDate(l.date):""} · 📍 ${esc(l.location||"")}</div>
+      ${planLine}
+      ${l.text?`<p style="font-size:14px;margin:8px 0">${esc(l.text)}</p>`:""}
+      <div class="actions">
+        <button class="sm primary" data-act="addMedia" data-id="${l.id}">+ 加照片/视频</button>
+        <button class="sm" data-act="editLog" data-id="${l.id}">编辑信息</button>
+        <button class="sm" data-act="toVideo" data-id="${l.id}">去短视频</button>
+        <button class="sm danger" data-act="delLog" data-id="${l.id}">删除</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3 style="font-size:15px">素材（${media.length}）· 打标签给短视频用</h3>
+      ${grid}
+    </div>
+    <div id="mediaEditor"></div>`;
+  bindMediaEditor(l);
+}
+function bindMediaEditor(l){
+  const box = $("#mediaEditor"); if(!box) return;
+  box.innerHTML = (l.media||[]).map(m=>`
+    <div class="card" data-mid="${m.id}">
+      <div class="row" style="align-items:center">
+        ${m.kind==="video"?`<video src="${objUrl(m.blob,m.id)}" muted playsinline style="width:64px;height:64px;object-fit:cover;border-radius:8px"></video>`
+          :`<img src="${objUrl(m.blob,m.id)}" style="width:64px;height:64px;object-fit:cover;border-radius:8px">`}
+        <div style="flex:1">
+          <div class="seg" data-f="shot">
+            ${["远景","中景","近景","特写","空镜"].map(o=>`<button class="${m.tags.shot===o?'on':''}" data-v="${o}">${o}</button>`).join("")}
+          </div>
+          <div class="seg" data-f="angle">
+            ${["平视","俯拍","仰拍","航拍"].map(o=>`<button class="${m.tags.angle===o?'on':''}" data-v="${o}">${o}</button>`).join("")}
+          </div>
+        </div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <label style="margin:0;flex:0 0 auto;display:flex;align-items:center;gap:6px;color:var(--text)"><input type="checkbox" ${m.tags.golden?"checked":""} data-f="golden" style="width:auto"> 🌟黄金时刻</label>
+        <input placeholder="情绪/备注，如 治愈、震撼" value="${esc(m.tags.mood||"")}" data-f="mood">
+      </div>
+      <input style="margin-top:8px" placeholder="这条素材的文案/字幕建议" value="${esc(m.caption||"")}" data-f="caption">
+      <div class="actions"><button class="sm danger" data-act="delMedia" data-id="${l.id}" data-mid="${m.id}">删除这条</button></div>
+    </div>`).join("");
+  [...box.querySelectorAll(".card[data-mid]")].forEach(card=>{
+    const mid = card.dataset.mid; const m = (l.media||[]).find(x=>x.id===mid); if(!m) return;
+    card.querySelectorAll(".seg").forEach(seg=>{
+      const f = seg.dataset.f;
+      seg.querySelectorAll("button").forEach(b=> b.onclick=()=>{
+        m.tags[f]=b.dataset.v;
+        seg.querySelectorAll("button").forEach(x=>x.classList.toggle("on", x===b));
+        dbPut("logs", l);
+      });
+    });
+    const gold = card.querySelector('input[data-f="golden"]');
+    gold.onchange = ()=>{ m.tags.golden=gold.checked; dbPut("logs", l); };
+    const mood = card.querySelector('input[data-f="mood"]');
+    mood.oninput = debounce(()=>{ m.tags.mood=mood.value; dbPut("logs", l); }, 400);
+    const cap = card.querySelector('input[data-f="caption"]');
+    cap.oninput = debounce(()=>{ m.caption=cap.value; dbPut("logs", l); }, 400);
+  });
+}
+
+/* ============ 模块3：短视频制作 ============ */
+const VIDEO_TEMPLATES = [
+  {id:"vlog", name:"Vlog 流水账", desc:"按时间线记录一天，轻松真实，最通用",
+    fit:(m)=>true, music:"轻快吉他 / lofi 纯音乐，90–100 BPM", platform:"抖音·视频号 竖屏 9:16",
+    shot:"按时间顺序排列，每段 3–8 秒，口播或花字串场"},
+  {id:"beat", name:"卡点快剪", desc:"踩点切换，爽感强，适合多素材",
+    fit:(m)=> m.total>=6 || m.videos>0, music:"节奏分明电子 / 国风卡点，110–128 BPM", platform:"抖音·小红书 竖屏",
+    shot:"每 0.5–1s 一切，配合鼓点，转场要干净"},
+  {id:"ambient", name:"沉浸式空镜", desc:"无旁白，靠画面与氛围说话",
+    fit:(m)=> m.golden>0 || m.scenery>0, music:"环境原声 + 极简钢琴，留白", platform:"小红书·B站 竖屏或横屏",
+    shot:"慢推 / 固定长镜头，黄金时刻空镜优先，字幕极少"},
+  {id:"guide", name:"攻略种草", desc:"信息密度高，带强推荐，吸收藏",
+    fit:(m)=> m.hasGuide, music:"明快流行，人声清晰", platform:"小红书·抖音 竖屏",
+    shot:"先抛亮点，再逐个展示，结尾强 CTA（收藏/出发）"}
+];
+function renderVideo(){
+  return `<div class="card">
+    <h3>🎬 短视频方案生成</h3>
+    <p class="meta">选一条游玩日志（含照片/视频素材），自动分析并推荐剪辑方式。</p>
+    <div id="videoSrc"></div>
+  </div>
+  <div id="videoOut"></div>`;
+}
+async function fillVideo(){
+  const logs = (await dbAll("logs")).filter(l=>(l.media||[]).length>0).sort((a,b)=>(b.date||"").localeCompare(a.date||""));
+  const sel = $("#videoSrc");
+  if(!logs.length){ sel.innerHTML = `<div class="empty">还没有带素材的日志，先去“游玩日志”上传照片/视频</div>`; return; }
+  sel.innerHTML = `<select id="vLog">${logs.map(l=>`<option value="${l.id}">${esc(l.title||"未命名")}（${fmtDate(l.date)}·${(l.media||[]).length}素材）</option>`).join("")}</select>
+    <div class="actions"><button class="primary sm" data-act="genVideo">生成方案</button></div>`;
+}
+async function genVideo(){
+  const logId = state.videoSrc || $("#vLog")?.value;
+  if(!logId){ toast("先选一条日志"); return; }
+  state.videoSrc = logId;
+  const l = await dbGet("logs", logId); if(!l){ toast("日志不存在"); return; }
+  const media = l.media||[];
+  // 分析
+  const m = { total:media.length, images:0, videos:0, golden:0, scenery:0, moods:{}, hasGuide:false };
+  media.forEach(x=>{ if(x.kind==="video")m.videos++; else m.images++;
+    if(x.tags&&x.tags.golden)m.golden++;
+    if(x.tags&&(x.tags.shot==="空镜"||x.tags.shot==="远景"))m.scenery++;
+    if(x.tags&&x.tags.mood)m.moods[x.tags.mood]=(m.moods[x.tags.mood]||0)+1; });
+  const records = await dbAll("records");
+  m.hasGuide = records.some(r=>r.kind==="guide" && (r.destination===l.location || (l.title||"").includes(r.destination||"_")));
+  const fits = VIDEO_TEMPLATES.filter(t=>t.fit(m));
+  const primary = fits[0] || VIDEO_TEMPLATES[0];
+  const alt = fits.slice(1);
+
+  // 分镜
+  const scenes = media.map((x,i)=>{
+    const shot=x.tags&&x.tags.shot||"中景", angle=x.tags&&x.tags.angle||"平视";
+    let text = x.caption || suggestText(x, m);
+    return {no:i+1, kind:x.kind==="video"?"视频":"照片", shot, angle, golden:x.tags&&x.tags.golden, text,
+      dur:x.kind==="video"?"用原片":"2–4 秒"};
+  });
+  const topMood = Object.entries(m.moods).sort((a,b)=>b[1]-a[1])[0];
+  const out = $("#videoOut");
+  out.innerHTML = `
+    <div class="card">
+      <h3>素材分析</h3>
+      <div class="meta">共 ${m.total} 条（照片 ${m.images} · 视频 ${m.videos}）｜🌟黄金时刻 ${m.golden} ｜空镜/远景 ${m.scenery}${topMood?`｜主情绪：${topMood[0]}`:""}</div>
+    </div>
+    <div class="tip-box">
+      <b>推荐方案：${esc(primary.name)}</b> — ${esc(primary.desc)}<br>
+      🎵 配乐：${esc(primary.music)}<br>
+      📐 比例/平台：${esc(primary.platform)}<br>
+      🎞 剪辑要点：${esc(primary.shot)}
+      ${alt.length?`<br><span class="meta">也可尝试：${alt.map(a=>a.name).join("、")}</span>`:""}
+    </div>
+    <div class="card">
+      <h3 style="font-size:15px">分镜脚本（${scenes.length} 镜）</h3>
+      ${scenes.map(s=>`
+        <div class="scene">
+          <span class="no">#${s.no}</span> <b>${s.kind}</b> · ${esc(s.shot)} · ${esc(s.angle)} ${s.golden?"🌟":""}
+          <div class="meta">建议时长：${esc(s.dur)}</div>
+          <div style="font-size:14px;margin-top:2px">${esc(s.text)}</div>
+        </div>`).join("")}
+    </div>
+    <div class="card">
+      <h3 style="font-size:15px">发布与封面建议</h3>
+      <ul style="margin:6px 0;padding-left:18px;font-size:14px">
+        <li>封面优先用 <b>黄金时刻</b> 或 <b>人物+地标</b> 的一张，加大字标题。</li>
+        <li>竖屏 9:16（1080×1920），前 3 秒必须出爆点，完播率优先。</li>
+        <li>字幕用醒目花字，BGM 音量压到人声/原声之下。</li>
+        <li>结尾引导互动：“收藏备用 / 你最想去哪？”</li>
+        ${m.golden>0?`<li>🌟 把黄金时刻素材放在转场或高潮处，质感拉满。</li>`:""}
+      </ul>
+      <div class="actions">
+        <button class="sm" data-act="copyScript">复制分镜脚本</button>
+        <button class="sm" data-act="coverGrid">生成封面九宫格</button>
+      </div>
+    </div>`;
+  LAST_VIDEO = { primary, scenes, m, logId:l.id };
+}
+function loadImg(src){ return new Promise((res,rej)=>{ const im=new Image(); im.onload=()=>res(im); im.onerror=rej; im.src=src; }); }
+async function coverGrid(){
+  const logId = state.videoSrc || (LAST_VIDEO&&LAST_VIDEO.logId);
+  if(!logId){ toast("请先在上方选一条日志并生成方案"); return; }
+  const l = await dbGet("logs", logId); if(!l){ toast("日志不存在"); return; }
+  const imgs = (l.media||[]).filter(x=>x.kind==="image");
+  if(!imgs.length){ toast("这条日志没有照片，九宫格需要图片素材"); return; }
+  const pick = imgs.slice(0,9);
+  const N=3, CELL=360, size=CELL*N;
+  const cv = document.createElement("canvas"); cv.width=size; cv.height=size;
+  const ctx = cv.getContext("2d");
+  ctx.fillStyle="#f7f5f0"; ctx.fillRect(0,0,size,size);
+  for(let i=0;i<pick.length;i++){
+    const col=i%3, row=Math.floor(i/3), x=col*CELL, y=row*CELL;
+    let im; try{ im = await loadImg(objUrl(pick[i].blob, pick[i].id)); }catch(e){ continue; }
+    const s=Math.max(CELL/im.width, CELL/im.height);
+    const w=im.width*s, h=im.height*s;
+    ctx.save(); ctx.beginPath(); ctx.rect(x,y,CELL,CELL); ctx.clip();
+    ctx.drawImage(im, x+(CELL-w)/2, y+(CELL-h)/2, w, h); ctx.restore();
+  }
+  ctx.strokeStyle="rgba(255,255,255,.85)"; ctx.lineWidth=4;
+  for(let i=1;i<N;i++){
+    ctx.beginPath(); ctx.moveTo(i*CELL,0); ctx.lineTo(i*CELL,size); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,i*CELL); ctx.lineTo(size,i*CELL); ctx.stroke();
+  }
+  const title=(l.title||l.location||"游记").slice(0,14);
+  ctx.fillStyle="rgba(0,0,0,.55)"; ctx.fillRect(0,size-84,size,84);
+  ctx.fillStyle="#fff"; ctx.font="600 40px -apple-system,'PingFang SC',sans-serif"; ctx.textBaseline="middle";
+  ctx.fillText(title, 28, size-42);
+  cv.toBlob(b=>{
+    const a=document.createElement("a"); a.href=URL.createObjectURL(b);
+    a.download="封面九宫格-"+(l.title||"游记")+".png"; a.click();
+    setTimeout(()=>URL.revokeObjectURL(a.href),3000);
+  }, "image/png");
+  toast(`封面九宫格已生成（${pick.length} 张）`);
+}
+function copyScript(){
+  if(!LAST_VIDEO){ toast("请先生成方案"); return; }
+  const { primary, scenes, m } = LAST_VIDEO;
+  const txt = `【${primary.name}】素材${m.total}条(照片${m.images}/视频${m.videos}) 黄金${m.golden}\n配乐:${primary.music}\n平台:${primary.platform}\n` +
+    scenes.map(s=>`#${s.no} ${s.kind} ${s.shot}/${s.angle}${s.golden?"🌟":""} ${s.dur} | ${s.text}`).join("\n");
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(()=>toast("已复制分镜脚本")).catch(()=>toast("复制失败，请手动选择"));
+  } else { toast("当前环境不支持自动复制"); }
+}
+function suggestText(x, m){
+  const t = x.tags||{};
+  if(t.golden && (t.shot==="空镜"||t.shot==="远景")) return "暖光铺满画面，配一句『这一刻值得早起』，慢推或固定长镜。";
+  if(t.shot==="特写") return "放大细节（食物/纹理/表情），字幕点出质感。";
+  if(t.angle==="航拍") return "上帝视角交代环境，配『这就是 XX』的开场。";
+  if(m.hasGuide) return "展示这个打卡点，字幕写清『怎么拍/为什么来』。";
+  return "记录当下氛围，花字或口播带过即可。";
+}
+
+/* ============ 模态框 & 表单 ============ */
+function openModal(title, html, footer){
+  $("#modalBox").innerHTML = `<h2>${title}</h2>${html}${footer||""}`;
+  $("#modal").classList.remove("hidden");
+}
+function closeModal(){ $("#modal").classList.add("hidden"); $("#modalBox").innerHTML=""; }
+
+function planForm(rec){
+  rec = rec || {kind:"plan", status:"todo", tags:[], title:"", destination:"", startDate:"", endDate:"", notes:""};
+  openModal(rec.id?"编辑计划":"新建旅游计划", `
+    <label>标题</label><input id="f_title" value="${esc(rec.title)}" placeholder="如：国庆桂林行">
+    <label>目的地</label><input id="f_dest" value="${esc(rec.destination)}" placeholder="如：桂林">
+    <div class="row">
+      <div><label>出发日期</label><input id="f_start" type="date" value="${rec.startDate?fmtDate(rec.startDate):""}"></div>
+      <div><label>返程日期</label><input id="f_end" type="date" value="${rec.endDate?fmtDate(rec.endDate):""}"></div>
+    </div>
+    <label>标签（逗号分隔）</label><input id="f_tags" value="${esc((rec.tags||[]).join(","))}" placeholder="如：亲子,美食,摄影">
+    <label>备注</label><textarea id="f_notes" placeholder="想去的景点、预算、同行人…">${esc(rec.notes||"")}</textarea>
+  `, `<div class="modal-actions"><button class="ghost" data-act="closeModal">取消</button><button class="primary" data-act="savePlan" data-id="${rec.id||""}">保存</button></div>`);
+}
+function guideForm(rec){
+  rec = rec || {kind:"guide", destination:"", title:"", photoTips:[{angle:"",content:""}], videoTips:[{angle:"",content:""}]};
+  const tipRows = (tips, kind)=> tips.map((t,i)=>`
+    <div class="row tiprow" data-kind="${kind}" data-i="${i}">
+      <input class="t-angle" placeholder="角度" value="${esc(t.angle)}">
+      <input class="t-content" placeholder="内容建议" value="${esc(t.content)}">
+      <button class="sm danger" type="button" onclick="this.parentNode.remove()">×</button>
+    </div>`).join("");
+  openModal(rec.id?"编辑攻略":"新建打卡攻略", `
+    <label>关联目的地</label><input id="g_dest" value="${esc(rec.destination)}" placeholder="如：桂林漓江">
+    <label>攻略标题（可选）</label><input id="g_title" value="${esc(rec.title)}" placeholder="如：漓江最佳机位">
+    <p style="color:var(--brand);font-weight:600;margin:14px 0 4px">📸 拍照角度与内容建议</p>
+    <div id="gPhoto">${tipRows(rec.photoTips,"photo")}</div>
+    <button class="sm" type="button" onclick="addTip('gPhoto','photo')">+ 加一条拍照建议</button>
+    <p style="color:var(--amber);font-weight:600;margin:14px 0 4px">🎥 拍视频角度与内容建议</p>
+    <div id="gVideo">${tipRows(rec.videoTips,"video")}</div>
+    <button class="sm" type="button" onclick="addTip('gVideo','video')">+ 加一条视频建议</button>
+  `, `<div class="modal-actions"><button class="ghost" data-act="closeModal">取消</button><button class="primary" data-act="saveGuide" data-id="${rec.id||""}">保存</button></div>`);
+}
+function addTip(boxId, kind){
+  const box = document.getElementById(boxId);
+  const div = document.createElement("div");
+  div.className = "row tiprow"; div.dataset.kind=kind;
+  div.innerHTML = `<input class="t-angle" placeholder="角度"><input class="t-content" placeholder="内容建议"><button class="sm danger" type="button" onclick="this.parentNode.remove()">×</button>`;
+  box.appendChild(div);
+}
+function logForm(rec, isEdit, planId){
+  rec = rec || {title:"", date:fmtDate(new Date()), location:"", text:""};
+  const pid = planId || rec.planId || "";
+  const fileRow = isEdit ? "" : `<label>照片 / 视频（可多选）</label><input id="l_files" type="file" accept="image/*,video/*" multiple>`;
+  openModal(isEdit?"编辑日志信息":"新建游玩日志", `
+    <label>标题</label><input id="l_title" value="${esc(rec.title)}" placeholder="如：Day1 漓江晨雾">
+    <div class="row">
+      <div><label>日期</label><input id="l_date" type="date" value="${rec.date?fmtDate(rec.date):""}"></div>
+      <div><label>地点</label><input id="l_loc" value="${esc(rec.location)}" placeholder="如：兴坪"></div>
+    </div>
+    <label>文字记录</label><textarea id="l_text" placeholder="今天发生了什么、什么感受…">${esc(rec.text||"")}</textarea>
+    ${fileRow}
+    ${pid?`<p class="meta" style="margin-top:10px">🔗 本日志将关联到计划</p>`:""}
+  `, `<div class="modal-actions"><button class="ghost" data-act="closeModal">取消</button><button class="primary" data-act="saveLog" data-id="${rec.id||""}" data-edit="${isEdit?1:0}" data-plan="${pid}">保存</button></div>`);
+}
+
+/* ============ 媒体缩略图 ============ */
+function imgThumb(file){ return new Promise(res=>{ const u=URL.createObjectURL(file); const im=new Image();
+  im.onload=()=>{ const c=document.createElement("canvas"); const M=360; const r=Math.min(M/im.width,M/im.height);
+    c.width=im.width*r||M; c.height=im.height*r||M; c.getContext("2d").drawImage(im,0,0,c.width,c.height);
+    res(c.toDataURL("image/jpeg",0.72)); URL.revokeObjectURL(u); }; im.onerror=()=>res(null); im.src=u; }); }
+function videoThumb(file){ return new Promise(res=>{ const u=URL.createObjectURL(file); const v=document.createElement("video");
+  v.preload="metadata"; v.muted=true; v.src=u; v.onloadeddata=()=>{ try{ v.currentTime=0.1; }catch(e){} };
+  v.onseeked=()=>{ const c=document.createElement("canvas"); c.width=v.videoWidth||320; c.height=v.videoHeight||180;
+    try{ c.getContext("2d").drawImage(v,0,0,c.width,c.height); res(c.toDataURL("image/jpeg",0.6)); }catch(e){ res(null);} URL.revokeObjectURL(u); };
+  v.onerror=()=>res(null); }); }
+
+/* ============ 事件绑定 ============ */
+function bindView(){
+  if(state.tab==="records"){
+    if(state.sub==="plan"||state.sub==="done") fillPlanList();
+    if(state.sub==="guide") fillGuideList();
+    if(state.sub==="explore") fillExplore();
+  } else if(state.tab==="logs"){
+    if(state.logId) fillLogDetail(); else fillLogs();
+  } else if(state.tab==="video"){
+    fillVideo();
+  }
+}
+function handleAct(act, el){
+  const id = el.dataset.id;
+  switch(act){
+    case "sub": state.sub = el.dataset.k; render(); break;
+    case "newPlan": planForm(); break;
+    case "editPlan": dbGet("records",id).then(planForm); break;
+    case "newGuide": guideForm(); break;
+    case "editGuide": dbGet("records",id).then(guideForm); break;
+    case "newLog": logForm(); break;
+    case "editLog": dbGet("logs",id).then(l=>logForm(l,true)); break;
+    case "openLog": state.logId=id; render(); break;
+    case "planToLog": dbGet("records",id).then(p=>logForm({
+        title:(p.title||"")+" 日志", date:p.startDate||fmtDate(new Date()),
+        location:p.destination||"", text:"" }, false, p.id)); break;
+    case "backLogs": state.logId=null; render(); break;
+    case "toVideo": state.videoSrc=id; state.tab="video"; setTab("video"); genVideo(); break;
+    case "addMedia": addMediaToLog(id); break;
+    case "doAddMedia": doAddMedia(id); break;
+    case "delMedia": delMedia(id, el.dataset.mid); break;
+    case "newDest": destForm(); break;
+    case "destToPlan": dbGet("destinations",id).then(d=>planForm({kind:"plan",status:"todo",title:d.name+" 之行",destination:d.name,tags:d.tags||[]})); break;
+    case "destToGuide": dbGet("destinations",id).then(d=>guideForm({kind:"guide",destination:d.name})); break;
+    case "destRemind": destRemind(id); break;
+    case "doSearch": doSearch(); break;
+    case "clearSearch": $("#searchKw").value=""; $("#fProv").value=""; $("#fType").value=""; $("#fSeason").value=""; $("#fStyle").value=""; doSearch(); break;
+    case "checkPush": checkPush(true); break;
+    case "closeModal": closeModal(); break;
+    case "savePlan": savePlan(id); break;
+    case "saveGuide": saveGuide(id); break;
+    case "saveDest": saveDest(); break;
+    case "saveLog": saveLog(id, el.dataset.edit==="1", el.dataset.plan||null); break;
+    case "finishPlan": dbGet("records",id).then(r=>{r.status="done";dbPut("records",r).then(()=>{toast("已标记完成");render();});}); break;
+    case "unfinishPlan": dbGet("records",id).then(r=>{r.status="todo";dbPut("records",r).then(()=>render());}); break;
+    case "delPlan": if(confirm("确认删除该计划？")) dbDel("records",id).then(()=>render()); break;
+    case "delGuide": if(confirm("确认删除该攻略？")) dbDel("records",id).then(()=>render()); break;
+    case "delLog": if(confirm("确认删除该日志及素材？")) dbDel("logs",id).then(()=>{state.logId=null;render();}); break;
+    case "genVideo": genVideo(); break;
+    case "copyScript": copyScript(); break;
+    case "coverGrid": coverGrid(); break;
+  }
+}
+function bindGlobal(){
+  $$(".tabbar button").forEach(b=> b.onclick=()=> setTab(b.dataset.tab));
+  // 全文档事件委托：覆盖动态注入的 data-act 元素
+  document.addEventListener("click",(e)=>{
+    const el = e.target.closest("[data-act]");
+    if(!el) return;
+    handleAct(el.dataset.act, el);
+  });
+  $("#btnNotify").onclick = enableNotify;
+  $("#btnExport").onclick = exportData;
+  $("#btnImport").onclick = ()=> $("#importFile").click();
+  $("#importFile").onchange = importData;
+}
+function setTab(t){ state.tab=t; state.logId = (t!=="logs")?state.logId:state.logId;
+  $$(".tabbar button").forEach(b=>b.classList.toggle("active", b.dataset.tab===t));
+  if(t!=="logs") state.logId=null; render(); }
+
+/* ============ 保存逻辑 ============ */
+async function savePlan(id){
+  const data = { kind:"plan", status:"todo",
+    title:$("#f_title").value.trim(), destination:$("#f_dest").value.trim(),
+    startDate:$("#f_start").value||"", endDate:$("#f_end").value||"",
+    tags:$("#f_tags").value.split(",").map(s=>s.trim()).filter(Boolean),
+    notes:$("#f_notes").value.trim() };
+  if(!data.title){ toast("请填标题"); return; }
+  if(id){ const old=await dbGet("records",id); Object.assign(old,data); await dbPut("records",old); }
+  else { data.id=uid(); data.createdAt=Date.now(); await dbPut("records",data); }
+  closeModal(); render(); toast("已保存");
+}
+async function saveGuide(id){
+  const collect=(boxId)=>[...document.getElementById(boxId).querySelectorAll(".tiprow")].map(r=>({angle:r.querySelector(".t-angle").value.trim(),content:r.querySelector(".t-content").value.trim()})).filter(t=>t.angle||t.content);
+  const data = { kind:"guide", destination:$("#g_dest").value.trim(), title:$("#g_title").value.trim(),
+    photoTips:collect("gPhoto"), videoTips:collect("gVideo"), updatedAt:Date.now() };
+  if(!data.destination){ toast("请填关联目的地"); return; }
+  if(id){ const old=await dbGet("records",id); Object.assign(old,data); old.updatedAt=Date.now(); await dbPut("records",old); }
+  else { data.id=uid(); data.createdAt=Date.now(); await dbPut("records",data); }
+  closeModal(); render(); toast("已保存");
+}
+async function saveLog(id, isEdit, planId){
+  const data = { title:$("#l_title").value.trim(), date:$("#l_date").value||fmtDate(new Date()),
+    location:$("#l_loc").value.trim(), text:$("#l_text").value.trim() };
+  if(!isEdit){
+    const files = $("#l_files").files;
+    const media = [];
+    for(const f of files){
+      const kind = f.type.startsWith("video")?"video":"image";
+      const thumb = kind==="image"? await imgThumb(f) : await videoThumb(f);
+      media.push({ id:uid(), kind, blob:f, name:f.name, size:f.size, thumb, tags:{shot:"",angle:"",golden:false,mood:""}, caption:"" });
+    }
+    data.media = media; data.id = uid(); data.createdAt=Date.now();
+    if(planId) data.planId = planId;
+    await dbPut("logs", data);
+    closeModal(); state.logId=data.id; render(); toast(`已保存，${media.length} 条素材`);
+  } else {
+    const old = await dbGet("logs", id); Object.assign(old, data);
+    if(planId && !old.planId) old.planId = planId;
+    await dbPut("logs", old); closeModal(); state.logId=id; render(); toast("已保存");
+  }
+}
+async function addMediaToLog(logId){
+  openModal("添加照片/视频", `<input id="am_files" type="file" accept="image/*,video/*" multiple>
+    <p class="meta">选择后点保存，素材会进这条日志，记得在详情里打标签。</p>`,
+    `<div class="modal-actions"><button class="ghost" data-act="closeModal">取消</button><button class="primary" data-act="doAddMedia" data-id="${logId}">保存</button></div>`);
+}
+async function doAddMedia(logId){
+  const files = $("#am_files").files; if(!files.length){ toast("没选文件"); return; }
+  const l = await dbGet("logs", logId);
+  for(const f of files){
+    const kind = f.type.startsWith("video")?"video":"image";
+    const thumb = kind==="image"? await imgThumb(f): await videoThumb(f);
+    l.media.push({ id:uid(), kind, blob:f, name:f.name, size:f.size, thumb, tags:{shot:"",angle:"",golden:false,mood:""}, caption:"" });
+  }
+  await dbPut("logs", l); closeModal(); state.logId=logId; render(); toast(`已添加 ${files.length} 条`);
+}
+async function delMedia(logId, mid){
+  const l = await dbGet("logs", logId);
+  l.media = (l.media||[]).filter(m=>m.id!==mid);
+  await dbPut("logs", l); render();
+}
+async function destForm(){
+  openModal("新增目的地", `
+    <label>名称</label><input id="d_name" placeholder="如：千岛湖">
+    <div class="row">
+      <div><label>省份</label><input id="d_prov" placeholder="如：浙江"></div>
+      <div><label>类型</label><select id="d_type"><option>自然</option><option>人文</option><option>城市</option><option>海岛</option></select></div>
+    </div>
+    <div class="row">
+      <div><label>玩法</label><select id="d_style"><option>休闲</option><option>摄影</option><option>探险</option><option>美食</option><option>历史</option></select></div>
+      <div><label>最佳月份(逗号,1-12)</label><input id="d_best" placeholder="如：3,4,9,10"></div>
+    </div>
+    <label>标签(逗号)</label><input id="d_tags" placeholder="如：湖岛,骑行">
+    <label>简介</label><textarea id="d_desc" placeholder="一句话亮点"></textarea>
+  `, `<div class="modal-actions"><button class="ghost" data-act="closeModal">取消</button><button class="primary" data-act="saveDest">保存</button></div>`);
+}
+async function saveDest(){
+  const best = ($("#d_best").value||"").split(",").map(s=>parseInt(s.trim())).filter(n=>n>=1&&n<=12);
+  const data = { id:uid(), name:$("#d_name").value.trim(), province:$("#d_prov").value.trim(),
+    type:$("#d_type").value, playStyle:$("#d_style").value, best, tags:($("#d_tags").value||"").split(",").map(s=>s.trim()).filter(Boolean),
+    desc:$("#d_desc").value.trim(), photo:[], video:[], addedByUser:true };
+  if(!data.name){ toast("请填名称"); return; }
+  await dbPut("destinations", data); closeModal(); if(state.sub==="explore"){ render(); } toast("目的地已加入库");
+}
+async function destRemind(id){
+  const d = await dbGet("destinations", id); if(!d) return;
+  const r = { id:uid(), kind:"season", destId:id, name:d.name, destBest:d.best, enabled:true, firedMonths:[] };
+  await dbPut("reminders", r);
+  toast(`已设「${d.name}」当季提醒`);
+}
+
+/* ============ 本地推送 ============ */
+async function enableNotify(){
+  if(!("Notification" in window)){ toast("此浏览器不支持通知"); return; }
+  if(Notification.permission==="granted"){ toast("通知已开启"); return; }
+  const p = await Notification.requestPermission();
+  toast(p==="granted"?"通知已开启，到时会弹窗提醒":"已取消，仅应用内提醒");
+}
+async function checkPush(force){
+  const items = [];
+  const now = new Date(); const ym = now.getFullYear()+"-"+(now.getMonth()+1);
+  const firedKey = "pushFired-"+ym;
+  const fired = await getMeta(firedKey, []);
+  // 当季推荐
+  if(await getMeta("pushSeasonal", true)){
+    const month = now.getMonth()+1;
+    const dests = (await dbAll("destinations")).filter(d=>(d.best||[]).includes(month));
+    if(dests.length){
+      const key = "season-"+month;
+      if(force || !fired.includes(key)){
+        items.push({type:"season", icon:"🌸", title:`${month}月当季好去处`, desc:`这月最适合去的：${dests.slice(0,6).map(d=>d.name).join("、")}`, dests:dests.slice(0,6)});
+        if(!fired.includes(key)) fired.push(key);
+      }
+    }
+  }
+  // 出行前提醒
+  if(await getMeta("pushPretrip", true)){
+    const plans = await dbAll("records");
+    plans.filter(r=>r.kind==="plan"&&r.status!=="done"&&r.startDate).forEach(p=>{
+      const diff = Math.ceil((new Date(p.startDate)-now)/86400000);
+      if(diff>=0 && diff<=3){
+        const key = "trip-"+p.id;
+        if(force || !fired.includes(key)){
+          items.push({type:"trip", icon:"🎒", title:`${diff===0?"今天":diff+"天后"}出发：${p.title}`, desc:"检查证件/相机/充电宝，参考攻略与天气"});
+          if(!fired.includes(key)) fired.push(key);
+        }
+      }
+    });
+  }
+  // 显式目的地当季提醒
+  const rems = await dbAll("reminders");
+  const month = now.getMonth()+1;
+  rems.filter(r=>r.kind==="season"&&(r.destBest||[]).includes(month)).forEach(r=>{
+    const key="r-"+r.id; if(force||!fired.includes(key)){ items.push({type:"remind",icon:"📍",title:`${r.name} 进入最佳季节`,desc:"计划出发吧，可加入旅游计划"}); if(!fired.includes(key))fired.push(key);} });
+  await setMeta(firedKey, fired);
+  await setMeta("pushItems", items);
+  renderPushList(items);
+  if(items.length && "Notification" in window && Notification.permission==="granted"){
+    items.slice(0,3).forEach(it=>{ try{ new Notification(it.title,{body:it.desc}); }catch(e){} });
+  }
+  toast(items.length?`推送 ${items.length} 条`:"暂无新推送");
+}
+
+/* ============ 备份 / 恢复 ============ */
+function blobToB64(blob){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result.split(",")[1]); r.onerror=rej; r.readAsDataURL(blob); }); }
+function b64ToBlob(b64,type){ const bin=atob(b64); const arr=new Uint8Array(bin.length); for(let i=0;i<bin.length;i++)arr[i]=bin.charCodeAt(i); return new Blob([arr],{type:type||""}); }
+async function exportData(){
+  const logs = await dbAll("logs");
+  for(const l of logs){ if(l.media) for(const m of l.media){ if(m.blob&&m.blob.size!=null) m.blob = {__b64:await blobToB64(m.blob), __type:m.blob.type}; } }
+  const data = { app:"travelApp", version:1, exportedAt:new Date().toISOString(),
+    records:await dbAll("records"), logs, destinations:await dbAll("destinations"),
+    reminders:await dbAll("reminders"), meta:await dbAll("meta") };
+  const blob = new Blob([JSON.stringify(data)],{type:"application/json"});
+  const a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+  a.download="游记志备份-"+fmtDate(new Date())+".json"; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+  toast("已导出备份");
+}
+async function importData(e){
+  const f = e.target.files[0]; if(!f) return;
+  const text = await f.text(); let data;
+  try{ data = JSON.parse(text); }catch(err){ toast("文件解析失败"); return; }
+  if(!confirm("恢复将合并覆盖同名数据，继续？")) return;
+  for(const store of ["records","logs","destinations","reminders","meta"]){
+    if(!data[store]) continue;
+    for(const item of data[store]){
+      if(store==="logs" && item.media){ item.media.forEach(m=>{ if(m.blob&&m.blob.__b64) m.blob=b64ToBlob(m.blob.__b64, m.blob.__type); }); }
+      await dbPut(store, item);
+    }
+  }
+  await setMeta("seeded", true);
+  closeModal(); render(); toast("恢复完成");
+  e.target.value="";
+}
+
+/* ============ 启动 ============ */
+async function boot(){
+  try{ await openDB(); }catch(e){ document.getElementById("view").innerHTML=`<div class="empty">无法打开本地数据库（IndexedDB）。请用浏览器打开本地服务器访问，而非直接双击文件。<br><br>在本文件夹运行：<br><code>python3 -m http.server 8080</code><br>再访问 http://localhost:8080</div>`; return; }
+  await seedIfNeeded();
+  bindGlobal();
+  render();
+  // 启动时顺带检查推送（不强制弹通知，仅更新推送中心）
+  checkPush(false);
+  // 注册 Service Worker（需 http(s) 环境）
+  if("serviceWorker" in navigator && location.protocol.startsWith("http")){
+    navigator.serviceWorker.register("sw.js").catch(()=>{});
+  }
+}
+boot();
+</script>
+</body>
+</html>
