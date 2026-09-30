@@ -494,7 +494,7 @@ function renderRecords(){
   else if(sub==="explore") body = exploreView();
   return `<div class="subtabs">${tabs}</div>
     <div class="actions" style="margin-bottom:12px">
-      ${sub==="guide" ? `<button class="primary sm" data-act="newGuide">+ 新建攻略</button>` : ""}
+      ${sub==="guide" ? `<button class="primary sm" data-act="newGuide">+ 新建攻略</button><button class="sm" data-act="genGuideFromPlan">✨ 从计划生成</button>` : ""}
       ${sub==="plan" ? `<button class="primary sm" data-act="newPlan">+ 新建计划</button>` : ""}
       ${sub==="explore" ? `<button class="primary sm" data-act="newDest">+ 新增目的地</button>` : ""}
     </div>${body}`;
@@ -518,6 +518,7 @@ async function fillPlanList(){
       ${r.notes?`<p style="margin:8px 0 0;font-size:14px">${esc(r.notes)}</p>`:""}
       <div class="actions">
         <button class="sm" data-act="editPlan" data-id="${r.id}">编辑</button>
+        <button class="sm primary" data-act="planToGuide" data-id="${r.id}">✨ 生成攻略</button>
         <button class="sm" data-act="planToLog" data-id="${r.id}">写日志</button>
         ${kind!=="done"?`<button class="sm green" data-act="finishPlan" data-id="${r.id}">标记完成</button>`
                       :`<button class="sm" data-act="unfinishPlan" data-id="${r.id}">撤回完成</button>`}
@@ -533,17 +534,23 @@ async function fillGuideList(){
   const all = await dbAll("records");
   const list = all.filter(r=>r.kind==="guide").sort((a,b)=>b.updatedAt-a.updatedAt);
   const wrap = $("#guideWrap");
-  if(!list.length){ wrap.innerHTML = `<div class="empty">还没有打卡攻略，点右上角新建</div>`; return; }
+  if(!list.length){ wrap.innerHTML = `<div class="empty">还没有打卡攻略，点上方「从计划生成」或「新建攻略」</div>`; return; }
+  const secList = (arr, color) => (arr&&arr.length) ? `<ul style="margin:0;padding-left:18px;font-size:14px">${arr.map(x=>`<li>${esc(x)}</li>`).join("")}</ul>` : "";
   wrap.innerHTML = list.map(g=>`
     <div class="card">
       <h3>📍 ${esc(g.destination||g.title)}</h3>
-      <div class="meta">${g.title&&g.title!==g.destination?esc(g.title):""}</div>
+      <div class="meta">${g.sourcePlanTitle?`🔗 来自计划：${esc(g.sourcePlanTitle)}`:""}${(g.sourcePlanTitle && g.title)?" · ":""}${g.title&&g.title!==g.destination?esc(g.title):""}</div>
       <p style="font-size:14px;margin:8px 0 4px;color:var(--brand);font-weight:600">📸 拍照建议</p>
       <ul style="margin:0;padding-left:18px;font-size:14px">${(g.photoTips||[]).map(t=>`<li><b>${esc(t.angle)}</b> — ${esc(t.content)}</li>`).join("")||"<li class='meta'>暂无</li>"}</ul>
       <p style="font-size:14px;margin:10px 0 4px;color:var(--amber);font-weight:600">🎥 拍视频建议</p>
       <ul style="margin:0;padding-left:18px;font-size:14px">${(g.videoTips||[]).map(t=>`<li><b>${esc(t.angle)}</b> — ${esc(t.content)}</li>`).join("")||"<li class='meta'>暂无</li>"}</ul>
+      ${(g.spots&&g.spots.length)?`<p style="font-size:14px;margin:10px 0 4px;color:var(--green);font-weight:600">📌 打卡点清单</p>${secList(g.spots)}`:""}
+      ${(g.tips&&g.tips.length)?`<details><summary>💡 行前/实战贴士（${g.tips.length}）</summary>${secList(g.tips)}</details>`:""}
+      ${(g.checklist&&g.checklist.length)?`<details><summary>🎒 装备准备（${g.checklist.length}）</summary>${secList(g.checklist)}</details>`:""}
+      ${(g.captions&&g.captions.length)?`<details><summary>✍️ 文案/字幕模板（${g.captions.length}）</summary>${secList(g.captions)}</details>`:""}
       <div class="actions">
         <button class="sm" data-act="editGuide" data-id="${g.id}">编辑</button>
+        ${g.planId?`<button class="sm" data-act="guideToLog" data-id="${g.id}">写日志</button>`:""}
         <button class="sm danger" data-act="delGuide" data-id="${g.id}">删除</button>
       </div>
     </div>`).join("");
@@ -977,24 +984,162 @@ function planForm(rec){
     <label>备注</label><textarea id="f_notes" placeholder="想去的景点、预算、同行人…">${esc(rec.notes||"")}</textarea>
   `, `<div class="modal-actions"><button class="ghost" data-act="closeModal">取消</button><button class="primary" data-act="savePlan" data-id="${rec.id||""}">保存</button></div>`);
 }
+/* ============ 「AI」攻略生成引擎（本地规则式，离线可用）============ */
+function seasonOf(m){ return [3,4,5].includes(m)?"春":[6,7,8].includes(m)?"夏":[9,10,11].includes(m)?"秋":"冬"; }
+async function genGuide(plan, destOverride){
+  const name = (destOverride || (plan&&plan.destination) || "").trim();
+  const dests = await dbAll("destinations");
+  const d = dests.find(x=>x.name===name)
+         || dests.find(x=> name && (x.name.includes(name)||name.includes(x.name)))
+         || dests.find(x=> name && name.includes(x.name))
+         || null;
+  const days = (plan&&plan.startDate&&plan.endDate)
+    ? Math.max(1, Math.round((new Date(plan.endDate)-new Date(plan.startDate))/86400000)+1) : 0;
+  const month = (plan&&plan.startDate) ? (new Date(plan.startDate).getMonth()+1) : (new Date().getMonth()+1);
+  const season = seasonOf(month);
+  const tags = [...new Set([...((plan&&plan.tags)||[]), ...(d?(d.tags||[]):[])])];
+  const type = d ? d.type : "自然";
+
+  const base = destTips(d || {type:"自然", photo:[], video:[]});
+  const photo = base.photo.slice();
+  const video = base.video.slice();
+  const spots = [], checklist = ["充电宝", "存储卡/备用电池", "雨具"], captions = [], tips = [];
+
+  // 季节
+  const seasonTip = {
+    "春":["花期与雨天并存，备防水与浅色系服装，花海用逆光更通透","清晨易起雾，是拍仙气空镜的好时机"],
+    "夏":["正午光硬，尽量早出晚归，抓日出后与日落前 1 小时","紫外线强，做好防晒，海边/高原注意逆光过曝"],
+    "秋":["层林尽染是全年最佳出片季，黄金时刻更长","早晚温差大带抓绒；落叶与水面倒影是重点题材"],
+    "冬":["雪景加 +1EV 曝光补偿，避免画面发灰，戴可触屏手套","日短光柔，适合暖调人像与夜景灯光"]
+  }[season];
+  tips.push(`${month}月出行（${season}）：${seasonTip[0]}`, seasonTip[1]);
+
+  // 天数/节奏
+  if(days>1) tips.push(`${days} 天行程：给每天定一个"打卡主视觉"（地标/日出/美食各一），避免素材同质化`);
+  else tips.push(`单日行程：集中抓 1 个日出或日落黄金时段 + 1 个地标，效率最高`);
+
+  // 人群/主题定制
+  if(tags.includes("亲子")){
+    photo.push({angle:"亲子抓拍", content:"多连拍孩子自然瞬间，蹲到孩子视平线，避开正午强光"});
+    checklist.push("儿童防晒/湿巾/小零食", "轻便推车或背带");
+    captions.push("带娃也能出片，这份攻略照抄就行");
+  }
+  if(tags.includes("情侣")) photo.push({angle:"情侣同框", content:"三脚架 + 延时自拍，逆光剪影或牵手背影最出片"});
+  if(tags.includes("摄影") || (d&&d.playStyle==="摄影")){
+    photo.push({angle:"专业出片", content:"带三脚架拍日出/星空；黄金时刻优先，宁欠不过曝"});
+    checklist.push("三脚架", "广角 + 长焦", "ND / CPL 滤镜");
+  }
+  if(tags.includes("美食") || (d&&d.playStyle==="美食")){
+    photo.push({angle:"美食特写", content:"俯拍加手部动作，借店内暖光，先拍整桌再拍单品"});
+    video.push({angle:"美食镜头", content:"上菜瞬间、拉丝/热气特写，配咀嚼声更有食欲"});
+  }
+  if(tags.includes("小众")) tips.push("小众目的地配套少：提前订好交通住宿，备些现金与干粮");
+  if(tags.includes("徒步") || (d&&d.playStyle==="探险")){
+    checklist.push("登山鞋", "冲锋衣", "水与能量补给", "头灯");
+    tips.push("徒步线路量力而行，提前看天气，尽量结伴");
+  }
+  if(tags.includes("避暑")) tips.push("避暑地早晚偏凉，带件薄外套；午后多阵雨，行程留弹性");
+
+  // 打卡点清单（按类型）
+  const spotMap = {
+    "自然":["主峰/核心观景台（日出机位）","溪流或湖泊倒影机位","经典步道中段回望全景"],
+    "人文":["地标建筑正立面对称机位","老街巷弄光影","室内展陈/壁画特写","夜色灯光机位"],
+    "城市":["城市天际线高点","地标建筑近景","街角烟火气抓拍","夜景车流/灯光"],
+    "海岛":["海滩日出机位","灯塔/码头地标","礁石海浪慢门","日落椰林剪影"],
+    "古镇":["清晨空巷","桥头/水边倒影","红灯笼夜景","手作/小吃摊特写"],
+    "雪山":["日照金山机位","雪线徒步视角","冰川/海子倒影"],
+    "草原":["地平线牛羊机位","河曲 S 形俯拍","毡房/牧民人文"],
+    "沙漠":["沙丘脊线风纹","驼队剪影","星空银河机位"],
+    "湖泊":["镜面倒影机位","湖畔晨雾","环湖高点全景"],
+    "温泉":["蒸汽逆光机位","泉池环境连带","雪景温泉同框"]
+  };
+  (spotMap[type] || spotMap["自然"]).forEach(s=>spots.push(s));
+  if(d && d.desc) tips.push(`目的地要点：${d.desc}`);
+  if(!d && name) tips.push(`库里暂无「${name}」资料，已按通用规则生成；可在「探索」里新增它，下次更准`);
+
+  // 文案模板
+  const place = (d&&d.name) || name || (plan&&plan.title) || "这里";
+  captions.push(`别人去${place}拍游客照，我拍的是壁纸`);
+  captions.push(`${month}月的${place}，值回票价`);
+  captions.push(`${place}打卡攻略｜几个机位照着拍就行`);
+  captions.push(`这一趟${place}，把${season}天装进相册`);
+
+  return {
+    kind:"guide", planId: plan?plan.id:null,
+    destination: place,
+    title: ((plan&&plan.title) || place) + " 打卡攻略",
+    photoTips: photo, videoTips: video,
+    spots, checklist, captions, tips,
+    sourcePlanTitle: plan ? plan.title : "",
+    updatedAt: Date.now()
+  };
+}
+async function genGuideFromPlan(){
+  const plans = (await dbAll("records")).filter(r=>r.kind==="plan")
+    .sort((a,b)=> (b.startDate||"").localeCompare(a.startDate||""));
+  if(!plans.length){ toast("还没有旅游计划，先去「旅游计划」建一个"); return; }
+  openModal("✨ 从计划生成打卡攻略", `
+    <label>选择旅游计划</label>
+    <select id="gp_plan">${plans.map(p=>`<option value="${p.id}">${esc(p.title)}（${esc(p.destination||"未填目的地")}${p.startDate?" · "+fmtDate(p.startDate):""}）</option>`).join("")}</select>
+    <p class="meta" style="margin-top:10px">根据该计划的目的地、日期、天数、标签，生成针对性的拍照/拍视频与打卡建议；生成后仍可自由编辑。</p>
+  `, `<div class="modal-actions"><button class="ghost" data-act="closeModal">取消</button><button class="primary" data-act="runGenGuide">✨ 生成</button></div>`);
+}
+async function runGenGuide(){
+  const id = $("#gp_plan").value;
+  const p = await dbGet("records", id);
+  const g = await genGuide(p);
+  closeModal(); guideForm(g);
+}
+function fillGuideFormFields(g){
+  const setRows=(boxId, kind, tips)=>{
+    const box = document.getElementById(boxId); if(!box) return;
+    const list = (tips&&tips.length) ? tips : [{angle:"",content:""}];
+    box.innerHTML = list.map((t,i)=>`
+      <div class="row tiprow" data-kind="${kind}" data-i="${i}">
+        <input class="t-angle" placeholder="角度" value="${esc(t.angle||"")}">
+        <input class="t-content" placeholder="内容建议" value="${esc(t.content||"")}">
+        <button class="sm danger" type="button" onclick="this.parentNode.remove()">×</button>
+      </div>`).join("");
+  };
+  setRows("gPhoto","photo", g.photoTips);
+  setRows("gVideo","video", g.videoTips);
+  const set = (id, arr)=>{ const e = $("#"+id); if(e) e.value = (arr||[]).join("\n"); };
+  set("gSpots", g.spots); set("gTips", g.tips); set("gChecklist", g.checklist); set("gCaptions", g.captions);
+  const t = $("#g_title"); if(t && !t.value) t.value = g.title;
+}
+async function aiFillGuide(){
+  const name = ($("#g_dest").value||"").trim();
+  if(!name){ toast("先填关联目的地"); return; }
+  const g = await genGuide(null, name);
+  fillGuideFormFields(g);
+  toast("已生成建议，可继续修改");
+}
+
 function guideForm(rec){
-  rec = rec || {kind:"guide", destination:"", title:"", photoTips:[{angle:"",content:""}], videoTips:[{angle:"",content:""}]};
-  const tipRows = (tips, kind)=> tips.map((t,i)=>`
+  rec = rec || {kind:"guide", destination:"", title:"", photoTips:[{angle:"",content:""}], videoTips:[{angle:"",content:""}], spots:[], tips:[], checklist:[], captions:[]};
+  const tipRows = (tips, kind)=> (tips&&tips.length?tips:[{angle:"",content:""}]).map((t,i)=>`
     <div class="row tiprow" data-kind="${kind}" data-i="${i}">
-      <input class="t-angle" placeholder="角度" value="${esc(t.angle)}">
-      <input class="t-content" placeholder="内容建议" value="${esc(t.content)}">
+      <input class="t-angle" placeholder="角度" value="${esc(t.angle||"")}">
+      <input class="t-content" placeholder="内容建议" value="${esc(t.content||"")}">
       <button class="sm danger" type="button" onclick="this.parentNode.remove()">×</button>
     </div>`).join("");
+  const lines = a => (a||[]).join("\n");
   openModal(rec.id?"编辑攻略":"新建打卡攻略", `
     <label>关联目的地</label><input id="g_dest" value="${esc(rec.destination)}" placeholder="如：桂林漓江">
     <label>攻略标题（可选）</label><input id="g_title" value="${esc(rec.title)}" placeholder="如：漓江最佳机位">
+    <div class="actions" style="margin-top:10px"><button class="sm primary" type="button" data-act="aiFillGuide">✨ 按目的地智能生成建议</button></div>
+    ${rec.sourcePlanTitle?`<p class="meta" style="margin-top:8px">🔗 本攻略基于计划「${esc(rec.sourcePlanTitle)}」生成，可继续编辑</p>`:""}
     <p style="color:var(--brand);font-weight:600;margin:14px 0 4px">📸 拍照角度与内容建议</p>
     <div id="gPhoto">${tipRows(rec.photoTips,"photo")}</div>
     <button class="sm" type="button" onclick="addTip('gPhoto','photo')">+ 加一条拍照建议</button>
     <p style="color:var(--amber);font-weight:600;margin:14px 0 4px">🎥 拍视频角度与内容建议</p>
     <div id="gVideo">${tipRows(rec.videoTips,"video")}</div>
     <button class="sm" type="button" onclick="addTip('gVideo','video')">+ 加一条视频建议</button>
-  `, `<div class="modal-actions"><button class="ghost" data-act="closeModal">取消</button><button class="primary" data-act="saveGuide" data-id="${rec.id||""}">保存</button></div>`);
+    <label>📌 打卡点清单（每行一条）</label><textarea id="gSpots">${esc(lines(rec.spots))}</textarea>
+    <label>💡 行前/实战贴士（每行一条）</label><textarea id="gTips">${esc(lines(rec.tips))}</textarea>
+    <label>🎒 装备准备（每行一条）</label><textarea id="gChecklist">${esc(lines(rec.checklist))}</textarea>
+    <label>✍️ 文案/字幕模板（每行一条）</label><textarea id="gCaptions">${esc(lines(rec.captions))}</textarea>
+  `, `<div class="modal-actions"><button class="ghost" data-act="closeModal">取消</button><button class="primary" data-act="saveGuide" data-id="${rec.id||""}" data-plan="${rec.planId||""}">保存</button></div>`);
 }
 function addTip(boxId, kind){
   const box = document.getElementById(boxId);
@@ -1073,7 +1218,12 @@ function handleAct(act, el){
     case "checkPush": checkPush(true); break;
     case "closeModal": closeModal(); break;
     case "savePlan": savePlan(id); break;
-    case "saveGuide": saveGuide(id); break;
+    case "saveGuide": saveGuide(id, el.dataset.plan||null); break;
+    case "genGuideFromPlan": genGuideFromPlan(); break;
+    case "runGenGuide": runGenGuide(); break;
+    case "aiFillGuide": aiFillGuide(); break;
+    case "planToGuide": dbGet("records",id).then(async p=>{ const g = await genGuide(p); guideForm(g); }); break;
+    case "guideToLog": dbGet("records",id).then(g=>logForm({title:(g.destination||"")+" 日志", date:fmtDate(new Date()), location:g.destination||"", text:""}, false, g.planId||null)); break;
     case "saveDest": saveDest(); break;
     case "saveLog": saveLog(id, el.dataset.edit==="1", el.dataset.plan||null); break;
     case "finishPlan": dbGet("records",id).then(r=>{r.status="done";dbPut("records",r).then(()=>{toast("已标记完成");render();});}); break;
@@ -1115,13 +1265,16 @@ async function savePlan(id){
   else { data.id=uid(); data.createdAt=Date.now(); await dbPut("records",data); }
   closeModal(); render(); toast("已保存");
 }
-async function saveGuide(id){
+async function saveGuide(id, planId){
   const collect=(boxId)=>[...document.getElementById(boxId).querySelectorAll(".tiprow")].map(r=>({angle:r.querySelector(".t-angle").value.trim(),content:r.querySelector(".t-content").value.trim()})).filter(t=>t.angle||t.content);
+  const toLines=(elId)=>{ const e=$("#"+elId); return e ? e.value.split("\n").map(s=>s.trim()).filter(Boolean) : []; };
   const data = { kind:"guide", destination:$("#g_dest").value.trim(), title:$("#g_title").value.trim(),
-    photoTips:collect("gPhoto"), videoTips:collect("gVideo"), updatedAt:Date.now() };
+    photoTips:collect("gPhoto"), videoTips:collect("gVideo"),
+    spots:toLines("gSpots"), tips:toLines("gTips"), checklist:toLines("gChecklist"), captions:toLines("gCaptions"),
+    updatedAt:Date.now() };
   if(!data.destination){ toast("请填关联目的地"); return; }
-  if(id){ const old=await dbGet("records",id); Object.assign(old,data); old.updatedAt=Date.now(); await dbPut("records",old); }
-  else { data.id=uid(); data.createdAt=Date.now(); await dbPut("records",data); }
+  if(id){ const old=await dbGet("records",id); Object.assign(old,data); if(planId) old.planId=planId; old.updatedAt=Date.now(); await dbPut("records",old); }
+  else { data.id=uid(); data.createdAt=Date.now(); if(planId) data.planId=planId; await dbPut("records",data); }
   closeModal(); render(); toast("已保存");
 }
 async function saveLog(id, isEdit, planId){
